@@ -6,6 +6,13 @@ content or token values in their messages (see CLAUDE.md logging
 rules).
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from secure_ai_gateway.models import EntityType
+
 
 class GatewayError(Exception):
     """Base class for all gateway errors."""
@@ -33,3 +40,16 @@ class PolicyError(GatewayError):
 
 class DetectionError(GatewayError):
     """The detection engine failed (e.g. NLP backend unavailable)."""
+
+
+class InstructionSecretError(GatewayError):
+    """A secret-class span was found in the user instruction (SR-022).
+
+    The pipeline converts this to a BLOCK decision with reason
+    ``secret:<TYPE>``. The message carries the type name only, never
+    the raw value (CLAUDE.md logging rules).
+    """
+
+    def __init__(self, entity_type: EntityType) -> None:
+        self.entity_type = entity_type
+        super().__init__(f"secret-class entity in instruction: {entity_type.value}")

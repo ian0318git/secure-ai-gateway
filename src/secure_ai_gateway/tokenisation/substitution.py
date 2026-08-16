@@ -14,11 +14,13 @@ import re
 from dataclasses import replace
 from typing import Protocol
 
+from secure_ai_gateway.errors import InstructionSecretError
 from secure_ai_gateway.models import (
     DetectionResult,
     DetectionSpan,
     Disposition,
     DocumentCell,
+    EntityType,
     PolicyDecision,
 )
 from secure_ai_gateway.tokenisation.vault import TokenVault
@@ -28,6 +30,20 @@ class _TextAnalyzer(Protocol):
     """Duck-typed DetectionEngine slice used for the instruction."""
 
     def analyze_text(self, text: str) -> tuple[DetectionSpan, ...]: ...
+
+
+# Same set as policy/engine.py:_BLOCK_TYPES; duplicated deliberately,
+# mirroring the models.DetectionResult.has_blocking_secret precedent —
+# the security test suite pins the two sets to stay equal.
+_INSTRUCTION_BLOCK_TYPES = frozenset(
+    {
+        EntityType.SECRET,
+        EntityType.API_KEY,
+        EntityType.PASSWORD,
+        EntityType.JWT,
+        EntityType.PRIVATE_KEY,
+    }
+)
 
 
 def tokenise_cells(
@@ -57,6 +73,25 @@ def tokenise_cells(
         substituted += sum(1 for s in spans if s.end > s.start)
         protected.append(replace(cell, value=new_value))
     return tuple(protected), substituted
+
+
+def protect_instruction(
+    engine: _TextAnalyzer,
+    instruction: str,
+    vault: TokenVault,
+) -> str:
+    """Apply detection + policy + tokenisation to the instruction (SR-022).
+
+    Secret-class spans raise ``InstructionSecretError`` (the pipeline
+    turns it into a BLOCK with reason ``secret:<TYPE>``); PII spans are
+    substituted through the shared session vault; all other text passes
+    through unchanged. Runs AFTER the injection check in the pipeline.
+    """
+    spans = engine.analyze_text(instruction)
+    for span in spans:
+        if span.entity_type in _INSTRUCTION_BLOCK_TYPES:
+            raise InstructionSecretError(span.entity_type)
+    return _substitute(instruction, spans, vault)
 
 
 def restore_text(text: str, vault: TokenVault) -> str:

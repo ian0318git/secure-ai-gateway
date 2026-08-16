@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import pytest
 
+from secure_ai_gateway.errors import InstructionSecretError
 from secure_ai_gateway.models import (
     CellDecision,
     CellDetection,
@@ -21,10 +22,22 @@ from secure_ai_gateway.models import (
     SpanSource,
 )
 from secure_ai_gateway.tokenisation.substitution import (
+    _INSTRUCTION_BLOCK_TYPES,
+    protect_instruction,
     restore_text,
     tokenise_cells,
 )
 from secure_ai_gateway.tokenisation.vault import SessionTokenVault
+
+
+class _StubAnalyzer:
+    """analyze_text-only stub (duck-typed DetectionEngine slice)."""
+
+    def __init__(self, spans: tuple[DetectionSpan, ...] = ()) -> None:
+        self._spans = spans
+
+    def analyze_text(self, text: str) -> tuple[DetectionSpan, ...]:
+        return self._spans
 
 
 def _span(
@@ -266,3 +279,66 @@ class TestRestoreText:
 
     def test_empty_vault_passthrough(self) -> None:
         assert restore_text("王小明", SessionTokenVault()) == "王小明"
+
+
+class TestProtectInstruction:
+    def test_pii_span_substituted_shared_vault(self) -> None:
+        # Same raw value in instruction and document -> SAME token
+        # (one session, one mapping table).
+        vault = SessionTokenVault()
+        doc_token = vault.token_for(EntityType.PERSON, "王小明")
+        stub = _StubAnalyzer((_span(EntityType.PERSON, 0, 3, "王小明"),))
+        protected = protect_instruction(stub, "王小明 分析毛利率", vault)
+        assert "王小明" not in protected
+        assert protected == f"{doc_token} 分析毛利率"
+
+    def test_secret_span_raises(self) -> None:
+        vault = SessionTokenVault()
+        stub = _StubAnalyzer((_span(EntityType.API_KEY, 0, 6, "sk-abc"),))
+        with pytest.raises(InstructionSecretError) as exc:
+            protect_instruction(stub, "sk-abc 分析", vault)
+        assert exc.value.entity_type is EntityType.API_KEY
+        # The message never carries the raw value.
+        assert "sk-abc" not in str(exc.value)
+
+    def test_secret_embedded_in_text_raises(self) -> None:
+        vault = SessionTokenVault()
+        stub = _StubAnalyzer((_span(EntityType.SECRET, 5, 12),))
+        with pytest.raises(InstructionSecretError):
+            protect_instruction(stub, "請分析 密碼abc", vault)
+
+    @pytest.mark.parametrize(
+        "blocked_type",
+        [EntityType.SECRET, EntityType.API_KEY, EntityType.PASSWORD,
+         EntityType.JWT, EntityType.PRIVATE_KEY],
+    )
+    def test_every_block_type_raises(self, blocked_type: EntityType) -> None:
+        vault = SessionTokenVault()
+        stub = _StubAnalyzer((_span(blocked_type, 0, 4),))
+        with pytest.raises(InstructionSecretError) as exc:
+            protect_instruction(stub, "xxxx 分析", vault)
+        assert exc.value.entity_type is blocked_type
+
+    def test_clean_instruction_unchanged(self) -> None:
+        vault = SessionTokenVault()
+        assert protect_instruction(_StubAnalyzer(), "請分析毛利率", vault) == \
+            "請分析毛利率"
+
+    def test_empty_instruction(self) -> None:
+        assert protect_instruction(_StubAnalyzer(), "", SessionTokenVault()) == ""
+
+    def test_pii_plus_clean_text_substitutes_only_spans(self) -> None:
+        vault = SessionTokenVault()
+        stub = _StubAnalyzer((_span(EntityType.PHONE, 4, 14, "0912345678"),))
+        protected = protect_instruction(stub, "請打給 0912345678 確認", vault)
+        assert protected.startswith("請打給 ") and protected.endswith(" 確認")
+        assert "0912345678" not in protected
+        assert vault.restore(protected.split(" ")[1]) == "0912345678"
+
+    def test_block_types_match_policy_engine(self) -> None:
+        # The duplicated set must never drift from the policy engine's
+        # block set (a secret the policy blocks must also block when it
+        # appears in the instruction).
+        from secure_ai_gateway.policy.engine import _BLOCK_TYPES
+
+        assert _INSTRUCTION_BLOCK_TYPES == _BLOCK_TYPES

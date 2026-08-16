@@ -6,6 +6,7 @@ value or raw value ever leaves through logs or report surfaces.
 """
 
 from secure_ai_gateway.tokenisation.substitution import (
+    protect_instruction,
     restore_text,
     tokenise_cells,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "TokenCollisionError",
     "TokenFormatError",
     "TokenVault",
+    "protect_instruction",
     "restore_text",
     "token_prefix",
     "tokenise_cells",

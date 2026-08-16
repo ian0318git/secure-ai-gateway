@@ -5,6 +5,10 @@ Everything here stays inside the trusted environment (T-I03): no token
 value or raw value ever leaves through logs or report surfaces.
 """
 
+from secure_ai_gateway.tokenisation.substitution import (
+    restore_text,
+    tokenise_cells,
+)
 from secure_ai_gateway.tokenisation.vault import (
     SessionTokenVault,
     TokenCollisionError,
@@ -18,5 +22,7 @@ __all__ = [
     "TokenCollisionError",
     "TokenFormatError",
     "TokenVault",
+    "restore_text",
     "token_prefix",
+    "tokenise_cells",
 ]

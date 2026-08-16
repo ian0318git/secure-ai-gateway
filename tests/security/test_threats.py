@@ -67,7 +67,7 @@ class TestEncodingThreats:
             StubEngine({"r1_c0": (_span(EntityType.PERSON),)}),
             ResourceLimits(),
         )
-        decision, report, retained = pipeline.process_file(f, request_id="r1")
+        decision, report, retained, _ = pipeline.process_file(f, request_id="r1")
         assert not decision.is_blocked()
         assert decision.disposition_for("r1_c0") is Disposition.TOKENISE
         assert report.encoding == "gbk"
@@ -80,7 +80,7 @@ class TestEncodingThreats:
             StubEngine({"r1_c1": (_span(EntityType.EMAIL),)}),
             ResourceLimits(),
         )
-        decision, report, _ = pipeline.process_file(f, request_id="r1")
+        decision, report, _, _ = pipeline.process_file(f, request_id="r1")
         assert not decision.is_blocked()
         assert decision.disposition_for("r1_c1") is Disposition.TOKENISE
         assert report.encoding == "utf_16"
@@ -94,7 +94,7 @@ class TestEncodingThreats:
         """
         f = tmp_path / "u16.xlsx"
         f.write_bytes("客戶,Email\n王小明,johnwang@example.com\n".encode("utf-16"))
-        decision, report, retained = Pipeline(
+        decision, report, retained, _ = Pipeline(
             StubEngine({}), ResourceLimits()
         ).process_file(f, request_id="r1")
         assert decision.is_blocked()
@@ -113,7 +113,7 @@ class TestFormulaInjection:
         f = tmp_path / "f.csv"
         f.write_bytes(f"客戶,金額\n{formula},1000\n".encode("utf-8"))
         pipeline = Pipeline(StubEngine({}), ResourceLimits())
-        decision, report, retained = pipeline.process_file(f, request_id="r1")
+        decision, report, retained, _ = pipeline.process_file(f, request_id="r1")
         assert not decision.is_blocked()
         # the neutralised cell must still be a normal cell, not a formula
         # (pandas 0-indexes the header as row 0: header 客戶/金額 =
@@ -166,7 +166,7 @@ class TestFailClosed:
 
         f = tmp_path / "x.csv"
         f.write_bytes("客戶,金額\n王小明,1000\n".encode("utf-8"))
-        decision, report, retained = Pipeline(
+        decision, report, retained, _ = Pipeline(
             Boom({}), ResourceLimits()
         ).process_file(f, request_id="r1")
         assert decision.is_blocked()
@@ -182,14 +182,14 @@ class TestFailClosed:
             StubEngine({"r1_c0": (_span(EntityType.TOKEN_PATTERN),)}),
             ResourceLimits(),
         )
-        decision, _, _ = pipeline.process_file(f, request_id="r1")
+        decision, _, _, _ = pipeline.process_file(f, request_id="r1")
         assert not decision.is_blocked()
         assert decision.disposition_for("r1_c0") is Disposition.TOKENISE
 
     def test_secret_span_blocks_whole_request(self, tmp_path) -> None:
         f = tmp_path / "s.csv"
         f.write_bytes("a,b\n1,2\n".encode("utf-8"))
-        decision, _, retained = Pipeline(
+        decision, _, retained, _ = Pipeline(
             StubEngine({"r1_c0": (_span(EntityType.API_KEY),)}),
             ResourceLimits(),
         ).process_file(f, request_id="r1")
@@ -231,7 +231,7 @@ class TestNoRawLeak:
             StubEngine({"r1_c0": (_span(EntityType.PERSON),)}),
             ResourceLimits(),
         )
-        _, report, _ = pipeline.process_file(f, request_id="r1")
+        _, report, _, _ = pipeline.process_file(f, request_id="r1")
         json_text = report.to_json()
         md_text = report.to_markdown()
         assert "機密客戶名稱AuroraX" not in json_text

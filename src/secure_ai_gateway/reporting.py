@@ -41,6 +41,7 @@ class MetadataReport:
     decision: PolicyDecision
     retained_cells: int
     dropped_cells: int
+    tokenised_spans: int = 0  # M2: document spans substituted only
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -68,6 +69,7 @@ class MetadataReport:
             },
             "retained_cells": self.retained_cells,
             "dropped_cell_count": self.dropped_cells,
+            "tokenised_spans": self.tokenised_spans,
         }
 
     def to_json(self) -> str:
@@ -99,6 +101,7 @@ class MetadataReport:
             f"- Blocked cells: {len(decision.blocked_cell_ids)}",
             f"- Dropped cells: {len(decision.dropped_cell_ids)}",
             f"- Retained cells: {self.retained_cells}",
+            f"- Tokenised spans: {self.tokenised_spans}",
         ]
         if self.injection_findings:
             lines += ["", "## Document injection findings"]
@@ -115,6 +118,7 @@ def build_report(
     detection: DetectionResult,
     decision: PolicyDecision,
     retained_cells: int,
+    tokenised_spans: int = 0,
 ) -> MetadataReport:
     """Assemble a report; counts spans per type (no raw content)."""
     span_counts: dict[str, int] = {}
@@ -142,4 +146,5 @@ def build_report(
         decision=decision,
         retained_cells=retained_cells,
         dropped_cells=len(decision.dropped_cell_ids),
+        tokenised_spans=tokenised_spans,
     )

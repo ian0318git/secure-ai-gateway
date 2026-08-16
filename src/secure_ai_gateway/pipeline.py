@@ -1,14 +1,17 @@
-"""Session pipeline: parse -> detect -> injection -> policy -> minimise.
+"""Session pipeline: parse -> detect -> injection -> policy -> minimise
+-> tokenise.
 
-One ``process_file`` call is one gateway session (docs/DESIGN.md §11).
-Fail-closed: ANY exception (parser, detection, policy, unexpected)
-becomes a BLOCK decision with reason ``error:<ClassName>`` — nothing
-proceeds downstream, nothing is logged raw (T-I05).
+One ``process_file`` call is one gateway session (docs/DESIGN.md §11),
+with one session-scoped token vault. Fail-closed: ANY exception
+(parser, detection, policy, tokenisation, unexpected) becomes a BLOCK
+decision with reason ``error:<ClassName>`` — nothing proceeds
+downstream, nothing is logged raw (T-I05).
 
 Critical injection findings get a dedicated path so the reason and
 the findings stay in the report: ``injection:critical``.
 
-M1 stops at minimisation: no tokenisation (M2), no LLM (M3).
+M2 tokenises TOKENISE cells and protects the instruction channel
+(SR-022); no LLM (M3).
 """
 
 from __future__ import annotations
@@ -18,7 +21,7 @@ import uuid
 from pathlib import Path
 
 from secure_ai_gateway.detection.engine import DetectionEngine
-from secure_ai_gateway.errors import GatewayError
+from secure_ai_gateway.errors import GatewayError, InstructionSecretError
 from secure_ai_gateway.injection.detector import detect
 from secure_ai_gateway.logging import log_event
 from secure_ai_gateway.limits import ResourceLimits
@@ -34,6 +37,11 @@ from secure_ai_gateway.parsers import parse_document
 from secure_ai_gateway.policy.engine import evaluate
 from secure_ai_gateway.policy.templates import resolve_template
 from secure_ai_gateway.reporting import MetadataReport, build_report
+from secure_ai_gateway.tokenisation.substitution import (
+    protect_instruction,
+    tokenise_cells,
+)
+from secure_ai_gateway.tokenisation.vault import SessionTokenVault
 
 logger = logging.getLogger("secure_ai_gateway.pipeline")
 
@@ -60,12 +68,14 @@ class Pipeline:
         instruction: str | None = None,
         template_name: str | None = "gross_margin",
         request_id: str | None = None,
-    ) -> tuple[PolicyDecision, MetadataReport, tuple[DocumentCell, ...]]:
-        """Run one session. Returns (decision, report, retained_cells).
+    ) -> tuple[PolicyDecision, MetadataReport, tuple[DocumentCell, ...], SessionTokenVault]:
+        """Run one session. Returns (decision, report, protected_cells, vault).
 
-        When the decision is BLOCK, ``retained_cells`` is empty.
+        One call = one session = one vault (SR-019). The caller owns the
+        vault and releases it at session end; on BLOCK it is empty.
         """
         rid = request_id or uuid.uuid4().hex[:12]
+        vault = SessionTokenVault()
         try:
             parsed = parse_document(path, self._limits)
             log_event(
@@ -82,23 +92,44 @@ class Pipeline:
             decision = evaluate(parsed, detection, resolve_template(template_name))
             if decision.is_blocked():
                 return self._finish_blocked(
-                    rid, parsed, detection, decision
+                    rid, parsed, detection, decision, vault
                 )
             retained, _dropped = apply_minimisation(parsed, decision)
+            if instruction is not None:  # SR-022: instruction is protected input
+                vault.protected_instruction = protect_instruction(
+                    self._engine, instruction, vault
+                )
+            protected, substituted = tokenise_cells(
+                retained, detection, decision, vault
+            )
             log_event(
                 logger,
                 "processed",
                 request_id=rid,
-                retained=len(retained),
+                retained=len(protected),
                 dropped=len(_dropped),
+                substituted=substituted,  # not "tokenised_*": log keys forbid it
             )
-            report = build_report(rid, parsed, detection, decision, len(retained))
-            return decision, report, retained
+            report = build_report(
+                rid, parsed, detection, decision, len(protected),
+                tokenised_spans=substituted,
+            )
+            return decision, report, protected, vault
         except _CriticalInjection as exc:
             return self._finish_blocked(
-                rid, exc.parsed, exc.detection, exc.decision
+                rid, exc.parsed, exc.detection, exc.decision, vault
+            )
+        except InstructionSecretError as exc:  # before generic handler
+            vault.clear()  # BLOCK: partial session state is destroyed
+            decision = PolicyDecision(
+                disposition=Disposition.BLOCK,
+                reason=f"secret:{exc.entity_type.value}",
+            )
+            return self._finish_blocked(
+                rid, parsed, detection, decision, vault
             )
         except Exception as exc:  # noqa: BLE001 — fail closed on anything
+            vault.clear()  # BLOCK: partial session state is destroyed
             reason = f"error:{type(exc).__name__}"
             log_event(
                 logger,
@@ -127,7 +158,7 @@ class Pipeline:
                 retained_cells=0,
                 dropped_cells=0,
             )
-            return decision, report, ()
+            return decision, report, (), vault
 
     # -- internals ----------------------------------------------------------
 
@@ -193,7 +224,8 @@ class Pipeline:
         parsed,
         detection: DetectionResult,
         decision: PolicyDecision,
-    ) -> tuple[PolicyDecision, MetadataReport, tuple[DocumentCell, ...]]:
+        vault: SessionTokenVault,
+    ) -> tuple[PolicyDecision, MetadataReport, tuple[DocumentCell, ...], SessionTokenVault]:
         log_event(
             logger,
             "blocked",
@@ -201,7 +233,7 @@ class Pipeline:
             reason=decision.reason,
         )
         report = build_report(rid, parsed, detection, decision, 0)
-        return decision, report, ()
+        return decision, report, (), vault
 
 
 class _CriticalInjection(GatewayError):

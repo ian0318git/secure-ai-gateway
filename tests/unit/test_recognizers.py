@@ -431,18 +431,37 @@ class TestCompanyNameRecognizerZh:
 
 class TestPersonFallbackRecognizerZh:
     POS = (
-        "王小明",
+        "王小明",                    # standalone
         "陳大文",
         "林俊傑",
         "張三",
         "李四 與 王五",
+        "湯家於今年第一季出貨",        # standalone + particle 於
+        "戴芷淑之毛利率為32%。",       # standalone + particle 之
+        "梁涵的Email是bob@x.com。",    # standalone + particle 的
+        "王小明是業務員。",            # standalone + particle 是
+        "客戶梁涵，身分證字號H130400517。",  # embedded after 客戶
+        "供應商曹芷芷之採購金額達NT$120000。",  # embedded after 供應商
+        "帳上鄭涵之逾期天數超過60天，須催收。",  # embedded after 帳上
+        "Alice Miller",              # english full name
+        "Steven Hall 的聯絡方式",     # english + particle
+        "Paul White的Email是p@x.com。",  # english + 的
     )
     NEG = (
         "陳列",         # business word (deny-list)
         "黃金",         # business word
+        "毛利率為32%。",  # 毛利率 deny-listed despite trailing 為
+        "金額已於月結時核對完成。",  # 金額已 = greedy extension of deny 金額
+        "客戶金額已於月結時核對完成。",  # deny-prefix applies after the prefix
+        "高雄港貨運量",  # 高+雄港 mid-word CJK: hard boundary
+        "金額",         # deny-listed
+        "萬元",         # deny-listed
+        "現金流量",     # deny-listed
         "王王王",       # all-identical chars
         "王",           # single char
         "王小明華",     # 4 chars: not the 1-2 given-char shape
+        "April Sales",  # en mode: month + business term
+        "Taipei Office",  # en mode: business term second word
     )
 
     @pytest.mark.parametrize("text", POS)

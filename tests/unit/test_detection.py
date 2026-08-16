@@ -165,6 +165,28 @@ class TestSourceLabelling:
         assert spans[0].source is SpanSource.NER
 
 
+class TestNerNoiseFilter:
+    def test_context_word_person_dropped(self) -> None:
+        # The zh NER labels 業務員/客戶/付款人 … as PERSON; these are
+        # role words, not names (benchmark-measured).
+        engine = DetectionEngine(analyzer=StubAnalyzer((
+            _result(EntityType.PERSON, 0, 3, 0.85, recognizer="SpacyRecognizer"),
+        )))
+        assert engine.analyze_text("業務員") == ()
+
+    def test_deny_word_person_dropped(self) -> None:
+        engine = DetectionEngine(analyzer=StubAnalyzer((
+            _result(EntityType.PERSON, 0, 2, 0.85, recognizer="SpacyRecognizer"),
+        )))
+        assert engine.analyze_text("金額") == ()
+
+    def test_real_person_kept(self) -> None:
+        engine = DetectionEngine(analyzer=StubAnalyzer((
+            _result(EntityType.PERSON, 0, 3, 0.85, recognizer="SpacyRecognizer"),
+        )))
+        assert len(engine.analyze_text("王小明")) == 1
+
+
 class TestThresholds:
     def test_below_threshold_dropped(self) -> None:
         engine = DetectionEngine(analyzer=StubAnalyzer((
@@ -244,6 +266,24 @@ class TestResolution:
         assert {s.entity_type for s in spans} == {
             EntityType.COMPANY_NAME, EntityType.PERSON,
         }
+
+    def test_address_absorbs_contained_person(self) -> None:
+        # The zh NER labels address components (羅東鎮/員林鎮 …) as
+        # PERSON; the ADDRESS skeleton is the more specific signal.
+        spans = resolve_overlaps((
+            _span(EntityType.ADDRESS, 0, 12, 0.65),
+            _span(EntityType.PERSON, 3, 6, 0.85, SpanSource.NER),
+        ))
+        assert [s.entity_type for s in spans] == [EntityType.ADDRESS]
+
+    def test_phone_beats_bank_account(self) -> None:
+        # A bare digit run inside a phone cell is a phone number, not
+        # an account (benchmark-measured: BANK_ACCOUNT tp=0 fp=226).
+        spans = resolve_overlaps((
+            _span(EntityType.BANK_ACCOUNT, 0, 10, 0.55),
+            _span(EntityType.PHONE, 0, 10, 0.7),
+        ))
+        assert [s.entity_type for s in spans] == [EntityType.PHONE]
 
     def test_non_overlapping_same_type_kept(self) -> None:
         spans = resolve_overlaps((

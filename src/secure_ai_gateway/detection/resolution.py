@@ -8,7 +8,11 @@ Presidio returns overlapping spans (allow_overlap=True). Rules:
    matching.)
 2. Same semantic family, different types -> keep the more specific:
    - COMPANY_NAME (suffix pattern) beats ORGANIZATION (NER ORG);
-   - ADDRESS (skeleton pattern) beats LOCATION (NER GPE/LOC);
+   - ADDRESS (skeleton pattern) beats LOCATION (NER GPE/LOC) and
+     PERSON (the zh NER mislabels address components such as 羅東鎮 /
+     員林鎮 as PERSON — benchmark-measured, docs/DECISIONS.md);
+   - PHONE (format pattern) beats BANK_ACCOUNT (a bare digit run in
+     a phone cell is a phone number, not an account — measured);
    - TOKEN_PATTERN beats CUSTOMER_ID / EMPLOYEE_ID (the reserved
      token format is more specific than a generic ID prefix).
 3. Different families overlapping -> both kept (e.g. a PERSON inside
@@ -22,7 +26,12 @@ from secure_ai_gateway.models import DetectionSpan, EntityType
 # Semantic families: more specific type listed first wins.
 _FAMILIES: dict[EntityType, tuple[EntityType, ...]] = {
     EntityType.COMPANY_NAME: (EntityType.COMPANY_NAME, EntityType.ORGANIZATION),
-    EntityType.ADDRESS: (EntityType.ADDRESS, EntityType.LOCATION),
+    EntityType.ADDRESS: (
+        EntityType.ADDRESS,
+        EntityType.LOCATION,
+        EntityType.PERSON,
+    ),
+    EntityType.PHONE: (EntityType.PHONE, EntityType.BANK_ACCOUNT),
     EntityType.TOKEN_PATTERN: (
         EntityType.TOKEN_PATTERN,
         EntityType.CUSTOMER_ID,

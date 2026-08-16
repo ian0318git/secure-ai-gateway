@@ -141,11 +141,63 @@ _SURNAMES = (
     "廖賈夏韋付方白鄒孟熊秦邱江尹薛閆段雷侯龍史陶黎賀顧毛郝龔邵萬"
     "錢嚴覃武戴莫孔向湯"
 )
+
+# Person-context words: a name directly following one of these is a
+# person reference (prefixed fallback mode); the NER PERSON noise
+# filter (engine.py) drops spans equal to one of these.
+_PERSON_CONTEXT_WORDS = frozenset(
+    """客戶 供應商 聯絡人 付款人 負責人 申請人 簽約人 承辦人 經辦人
+    業務員 廠商 員工 戶名 甲方 乙方 帳上""".split()
+)
+
+# Names are allowed to be followed by prose particles (之/於/的/是…)
+# or punctuation; the deny-list + validate_result catch the
+# surname-initial business words (毛利率/高雄港/萬元 …) that also
+# end before punctuation. Everything else (為/為數/… mid-word CJK) is
+# still a hard boundary.
+_PERSON_TRAILING = r"(?=[之於的是，。；、！？：\s]|$)"
+
+# Standalone mode: no CJK/ASCII before the name.
 _PERSON_RE = re.compile(
-    rf"(?<![一-鿿])([{_SURNAMES}][一-鿿]{{1,2}})(?![一-鿿])"
+    rf"(?<![一-鿿A-Za-z0-9])([{_SURNAMES}][一-鿿]{{1,2}}){_PERSON_TRAILING}"
+)
+
+# Embedded mode: a name directly after a person-context word
+# (客戶X於… / 帳上X之…) that the NER misses. The context word anchors
+# the match, so no CJK lookbehind is needed.
+_PERSON_PREFIX_RE = re.compile(
+    rf"(?:{'|'.join(sorted(_PERSON_CONTEXT_WORDS, key=len, reverse=True))})"
+    rf"(?:為|是)?([{_SURNAMES}][一-鿿]{{1,2}}){_PERSON_TRAILING}"
+)
+
+# English full names (the zh NER misses "Alice Miller 的Email…").
+# First word not a month, second word not a business term:
+# validated in validate_result.
+_PERSON_EN_RE = re.compile(
+    r"(?<![A-Za-z])([A-Z][a-z]{1,12} [A-Z][a-z]{1,12})"
+    r"(?=[的，。；、！？：\s]|$)"
+)
+
+_PERSON_EN_DENY_FIRST = frozenset(
+    """January February March April May June July August September
+    October November December Q1 Q2 Q3 Q4""".split()
+)
+_PERSON_EN_DENY_SECOND = frozenset(
+    """Sales Revenue Margin Growth Report Office Region Market Team
+    Year Quarter Rate Index Ratio Plan Budget Division Section
+    Department Summary Update Strategy""".split()
 )
 
 # Common words that start with a surname but are NOT names (FP control).
+# Extensions below are benchmark-measured (docs/DECISIONS.md):
+# surname-initial financial terms (毛利率 萬元 現金流量 …), city
+# names (高雄港 台北 …), and person-context role words (客戶 付款人 …)
+# that the zh NER mislabels as PERSON.
+#
+# Exact-match deny words: business words that can also be a real
+# name's prefix (王國X, 黃金X, 白雲X …), so they are checked as whole
+# strings only — a 王國明 must not be denied because 王國 (kingdom)
+# is a word.
 _PERSON_DENY_WORDS = frozenset(
     """陳列 陳述 陳情 陳年 陳舊 林業 林場 林木 黃昏 黃金 黃色 黃牛
     王國 王子 王朝 王位 王后 李樹 周邊 周圍 周全 周年 週期 週末 週年
@@ -162,6 +214,28 @@ _PERSON_DENY_WORDS = frozenset(
     溫泉 溫度 溫暖 歐陽 文書 文章 文化 文書處理 章節 章魚 華盛頓 華人
     華爾街 華航 費率 費用 費心 池水 池塘 湯水 嚴肅 嚴格 嚴重 嚴謹
     柳樹 柳葉 花園 花卉 范仲淹 葉子 葉片 草率 黃昏後""".split()
+)
+
+# Prefix-match deny words (benchmark-measured, docs/DECISIONS.md):
+# surname-initial financial terms (金額/毛利/萬元 …), city names and
+# role words — none of these can begin a real name (金額X/高雄X/萬元X
+# are not people), so the first 2/3 chars of any fallback match are
+# checked against them. Catches the greedy extension 金額已 while an
+# exact-match list would miss it. (王國/黃金/白雲 stay exact-match:
+# 王國X IS a real name shape.)
+_PERSON_DENY_PREFIX_WORDS = frozenset(
+    """金額 金庫 金錢 金管會 銀行 白銀 白紙 白條 白天 白云
+    毛利率 淨利率 收益率 匯率 利率 單價 毛利 萬元 金流量 現金流量
+    高雄港 高雄 台北 台中 台南 新北 桃園 基隆 花蓮 台東 苗栗 彰化
+    南投 雲林 屏東 澎湖 金門 連江
+    客戶 付款人 供應商 聯絡人 負責人 申請人 簽約人 承辦人 經辦人
+    業務員 戶名 廠商 員工""".split()
+)
+
+# NER PERSON spans that are exactly a deny-listed or context word are
+# mislabels (業務員/客戶/付款人 …) and are dropped in engine.py.
+_PERSON_NOISE_WORDS = (
+    _PERSON_DENY_WORDS | _PERSON_DENY_PREFIX_WORDS | _PERSON_CONTEXT_WORDS
 )
 
 _TITLES = (
@@ -433,12 +507,19 @@ class AddressRecognizerZh(PatternRecognizer):
 class PersonFallbackRecognizerZh(PatternRecognizer):
     """Surname-dictionary fallback for names the NER misses.
 
-    The CJK lookbehind makes this match standalone names only; NER
-    handles names embedded in sentences. The validate_result denies
-    business words (陳列, 黃金, ...). Note presidio sets MAX_SCORE (1.0)
-    when validation passes, so a validated fallback name scores 1.0 —
-    when NER also fires on the same standalone span the content is
-    identical, so the winner is irrelevant.
+    Three modes (benchmark-calibrated, docs/DECISIONS.md):
+    - standalone (0.55): a name at a non-CJK boundary, optionally
+      followed by a prose particle (之/於/的/是/，/。);
+    - embedded (0.6): a name right after a person-context word
+      (客戶/供應商/帳上/負責人 …) — the NER misses most of these;
+    - english (0.6): "Alice Miller"-shaped full names.
+
+    ``validate_result`` denies business words (陳列, 毛利率, …) and
+    en-mode business terms (April Sales, Q3 Report …). Note presidio
+    sets MAX_SCORE (1.0) when validation passes, so a validated
+    fallback name scores 1.0 — when NER also fires on the same
+    standalone span the content is identical, so the winner is
+    irrelevant.
     """
 
     def __init__(self) -> None:
@@ -446,17 +527,49 @@ class PersonFallbackRecognizerZh(PatternRecognizer):
             supported_entity=EntityType.PERSON.value,
             name="person_fallback_zh",
             supported_language="zh",
-            patterns=[_pattern("PERSON_FB_ZH", _PERSON_RE, 0.55)],
+            patterns=[
+                _pattern("PERSON_FB_ZH", _PERSON_RE, 0.55),
+                _pattern("PERSON_FB_PREFIX_ZH", _PERSON_PREFIX_RE, 0.6),
+                _pattern("PERSON_FB_EN", _PERSON_EN_RE, 0.6),
+            ],
         )
 
     def validate_result(self, pattern_text: str) -> bool:
-        if len(pattern_text) < 2 or len(pattern_text) > 3:
+        # The embedded-mode full match includes the anchoring context
+        # word (客戶梁涵), so strip it before the length checks. Safe:
+        # every context word starts with a non-surname char.
+        name = pattern_text
+        for word in sorted(_PERSON_CONTEXT_WORDS, key=len, reverse=True):
+            if name.startswith(word):
+                name = name[len(word):]
+                break
+        if name.startswith("為") or name.startswith("是"):
+            name = name[1:]
+        if " " in name:  # en mode: "Alice Miller"
+            first, second = name.split(" ", 1)
+            if len(first) < 2 or len(second) < 2:
+                return False
+            if first in _PERSON_EN_DENY_FIRST:
+                return False
+            if second in _PERSON_EN_DENY_SECOND:
+                return False
+            return True
+        if len(name) < 2 or len(name) > 3:
             return False
-        if pattern_text in _PERSON_DENY_WORDS:
+        if name in _PERSON_DENY_WORDS:
             return False
-        if len(set(pattern_text)) == 1:  # "王王王" is not a name
+        # Deny-prefix check: 金額已 is a greedy 3-char extension of the
+        # financial word 金額; reject any name whose 2- or 3-char prefix
+        # is in the measured business/geo word set (金額X/高雄X/萬元X are
+        # never real names — unlike 王國X, which stays exact-match only).
+        if (
+            name[:2] in _PERSON_DENY_PREFIX_WORDS
+            or name[:3] in _PERSON_DENY_PREFIX_WORDS
+        ):
             return False
-        if len(pattern_text) == 2 and pattern_text in _TITLES:
+        if len(set(name)) == 1:  # "王王王" is not a name
+            return False
+        if len(name) == 2 and name in _TITLES:
             return False
         return True
 

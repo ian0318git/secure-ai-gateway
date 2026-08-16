@@ -24,6 +24,7 @@ from secure_ai_gateway.detection.ner import (
     build_analyzer,
 )
 from secure_ai_gateway.detection.recognizers import (
+    _PERSON_NOISE_WORDS,
     _tw_id_checksum,
     build_pattern_recognizers,
 )
@@ -104,6 +105,15 @@ class DetectionEngine:
                         f"{result.entity_type!r}"
                     ) from None
             source = self._source_for(entity_type, recognizer_name)
+            if (
+                entity_type is EntityType.PERSON
+                and source is SpanSource.NER
+                and text[result.start : result.end] in _PERSON_NOISE_WORDS
+            ):
+                # The zh NER labels person-context role words (業務員 /
+                # 客戶 / 付款人 …) as PERSON (spike + benchmark measured,
+                # docs/DECISIONS.md): these are not names.
+                continue
             checksum_valid = None
             if entity_type is EntityType.TW_ID:
                 raw = text[result.start : result.end]

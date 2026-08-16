@@ -18,6 +18,7 @@ from presidio_analyzer.recognizer_result import RecognizerResult
 from secure_ai_gateway.detection.context import boosted_spans
 from secure_ai_gateway.detection.ner import (
     NER_ENTITY_TYPES,
+    NER_LABEL_MAP,
     NER_RECOGNIZER_NAME,
     assert_zh_only,
     build_analyzer,
@@ -91,13 +92,17 @@ class DetectionEngine:
             # metadata (``decision_process`` no longer exists).
             metadata = result.recognition_metadata or {}
             recognizer_name = metadata.get(RecognizerResult.RECOGNIZER_NAME_KEY)
-            try:
-                entity_type = EntityType(result.entity_type)
-            except ValueError:
-                raise DetectionError(
-                    f"recogniser emitted unknown entity type "
-                    f"{result.entity_type!r}"
-                ) from None
+            # NER spans carry the RAW spaCy label (SpacyRecognizer emits
+            # ner_entity.label_); translate before the EntityType check.
+            entity_type = NER_LABEL_MAP.get(result.entity_type)
+            if entity_type is None:
+                try:
+                    entity_type = EntityType(result.entity_type)
+                except ValueError:
+                    raise DetectionError(
+                        f"recogniser emitted unknown entity type "
+                        f"{result.entity_type!r}"
+                    ) from None
             source = self._source_for(entity_type, recognizer_name)
             checksum_valid = None
             if entity_type is EntityType.TW_ID:

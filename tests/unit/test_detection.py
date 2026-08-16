@@ -138,6 +138,32 @@ class TestSourceLabelling:
         with pytest.raises(DetectionError):
             engine.analyze_text("abc")
 
+    @pytest.mark.parametrize(
+        ("raw_label", "expected"),
+        [
+            ("GPE", EntityType.LOCATION),
+            ("LOC", EntityType.LOCATION),
+            ("ORG", EntityType.ORGANIZATION),
+            ("PERSON", EntityType.PERSON),
+        ],
+    )
+    def test_raw_spacy_label_mapped_to_gateway_type(
+        self, raw_label: str, expected: EntityType
+    ) -> None:
+        # SpacyRecognizer emits the RAW spaCy label (ner_entity.label_);
+        # the engine must translate GPE/LOC/ORG -> gateway types
+        # (regression: benchmark run failed closed on 'GPE').
+        raw = RecognizerResult(
+            entity_type=raw_label, start=0, end=3, score=0.85,
+            recognition_metadata={
+                RecognizerResult.RECOGNIZER_NAME_KEY: "SpacyRecognizer"
+            },
+        )
+        engine = DetectionEngine(analyzer=StubAnalyzer((raw,)))
+        spans = engine.analyze_text("台北市")
+        assert spans[0].entity_type is expected
+        assert spans[0].source is SpanSource.NER
+
 
 class TestThresholds:
     def test_below_threshold_dropped(self) -> None:

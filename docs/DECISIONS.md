@@ -5,6 +5,55 @@ Reverse-chronological.
 
 ---
 
+## 2026-08-16 — M1 Calibration Decisions (benchmark loop)
+
+First benchmark run: aggregate P=0.6867 (required 0.80), PERSON
+P=0.441/R=0.755. Diagnosed per-entity FP/FN sources (script + sampled
+cells), then fixed rules. Final test-split result (seed 42, thresholds
+calibrated on train only): **aggregate P=0.8458 / R=0.9738; PERSON
+P=0.8475 / R=0.8525; all 15 acceptance checks PASS.**
+
+- **ADDRESS family absorbs contained PERSON**: the zh NER labels
+  address components (羅東鎮/員林鎮/前鎮區/花蓮市 …) as PERSON —
+  282 of 1200 ADDRESS cells carried PERSON FPs. Resolution family
+  ADDRESS > (LOCATION, PERSON): the skeleton regex is the more
+  specific signal for a mailing address.
+- **PHONE family beats BANK_ACCOUNT**: BANK_ACCOUNT (bare 10-14 digit
+  run, tp=0) fired on 226 PHONE cells; PHONE is the more specific
+  interpretation of a digit run in a phone context.
+- **Person fallback: three modes** (was: standalone-only with a full
+  CJK lookbehind, which missed 40 zh names — sentence-start names
+  followed by particles and names after 客戶/供應商/帳上):
+  - standalone: name at a non-CJK boundary, optionally followed by a
+    prose particle (之/於/的/是/，/。);
+  - embedded: name directly after a person-context word (客戶/供應商/
+    帳上/負責人/付款人/…);
+  - English full-name mode (`Alice Miller`), first word not a month,
+    second word not a business term.
+- **presidio validates the FULL match**: `PatternRecognizer.__analyze_
+  patterns` calls `validate_result(text[start:end])` — for the
+  embedded mode the match includes the anchoring prefix (客戶梁涵), so
+  `validate_result` strips a known context-word prefix before the
+  length checks (safe: every context word starts with a non-surname
+  char).
+- **Deny-list split: exact vs prefix**: the greedy `{1,2}` given-name
+  extends a deny word to 3 chars (金額→金額已) and an exact-match list
+  misses it. Measured surname-initial business/geo words (毛利率/高雄港/
+  萬元/金額/… plus role words) form a PREFIX-match set — 金額X/高雄X/
+  萬元X are never real names. 王國/黃金/白雲 stay exact-match only,
+  because 王國X/黃金X ARE real name shapes (the generator's pool was
+  enumerated: zero prefix-set collisions, 30 would-be exact-set
+  collisions were all 王國X and are deliberately allowed).
+- **NER PERSON noise filter**: the zh NER labels role words (業務員/
+  客戶/付款人 …) as PERSON; engine drops NER PERSON spans equal to a
+  deny/context word.
+- **Residual FPs are honest**: LOCATION (118) and ORGANIZATION (142)
+  have no ground-truth class (no LOCATION class; ORGANIZATION class is
+  scored as COMPANY_NAME) — they are pure overgeneration on negatives
+  (~8% of negatives are deliberately geographic/financial terms).
+  Aggregate precision 0.8458 clears 0.80 with these included; per
+  DESIGN §9 the acceptance floor is unchanged.
+
 ## 2026-08-16 — M1 Planning Decisions
 
 - **Chinese NLP backend: spaCy `zh_core_web_lg`** (user decision).

@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secrets — never commit
+.env
+.env.*
+*.key
+*.pem
+*.p12
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# Local artifacts
+tmp/
+*.log

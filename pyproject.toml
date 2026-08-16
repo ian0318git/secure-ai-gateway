@@ -18,11 +18,17 @@ classifiers = [
 
 # Pinned for M1 (see docs/DECISIONS.md):
 # presidio-analyzer 2.2.364 requires spacy>=3.4.4,!=3.7.0,<4.0.0;
-# zh-core-web-lg 3.6.0 requires spacy>=3.6.0,<3.7.0 -> spacy==3.6.1.
+# spacy 3.7.2 (thinc>=8.2.2) is the first 3.7.x with cp312 wheels;
+# zh_core_web_lg 3.7.0 requires spacy>=3.7.0,<3.8.0 -> pair 3.7.2/3.7.0.
+# (3.6.1 was rejected at install time: its thinc 8.1.x has no cp312
+# wheels and needs a C compiler — no build tools on this machine.)
+# Note: zh_core_web_lg (~575MB) is NOT on PyPI (PyPI 100MB file limit);
+# spaCy hosts large model wheels on the explosion/spacy-models GitHub
+# releases. Installed via a direct URL reference.
 dependencies = [
     "charset-normalizer==3.3.2",
-    "spacy==3.6.1",
-    "zh-core-web-lg==3.6.0",
+    "spacy==3.7.2",
+    "zh_core_web_lg @ https://github.com/explosion/spacy-models/releases/download/zh_core_web_lg-3.7.0/zh_core_web_lg-3.7.0-py3-none-any.whl",
     "presidio-analyzer==2.2.364",
     "pandas>=2.2,<3",
     "openpyxl>=3.1.2,<3.2",
@@ -39,6 +45,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]  # the benchmark package lives at the repo root
 markers = [
     "benchmark: long-running benchmark suite (run with -m benchmark)",
 ]

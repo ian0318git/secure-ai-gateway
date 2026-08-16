@@ -5,6 +5,58 @@ Reverse-chronological.
 
 ---
 
+## 2026-08-17 — M2 Tokenisation Decisions
+
+- **Token format: `<PREFIX>_<8 lowercase hex>`** (32 bits, stdlib
+  `secrets.token_hex(4)`). Deliberate deviation from the DESIGN §11
+  example `CUSTOMER_4f8a21`: a 6-hex suffix MATCHES the reserved
+  TOKEN_PATTERN regex (`[0-9a-f]{6}(?![A-Za-z0-9_])`), so the example
+  itself lives inside the reserved namespace; the 8-hex suffix's 7th
+  hex char always defeats the lookahead. Property-verified: 6000
+  generated tokens (12 prefixes x 500, presidio's real compile flags
+  re.I|M|S) → 0 matches of the reserved regex, bare or embedded.
+- **Prefixes are entity-type based**, not value-based: company →
+  `COMPANY_`, email → `EMAIL_`, TW_ID → `TWID_`, token-format source
+  values → `TOKEN_`, … (full table in tokenisation/vault.py). The
+  DESIGN example "Aurora Motors AU → CUSTOMER_4f8a21" is illustrative
+  only: an entity's prefix follows its detected type, and a 3-word
+  English company name may not be detected by the zh recognisers at
+  all.
+- **M3 flag — tokens re-detect as PII**: a `CUSTOMER_…` token matches
+  the `_CUSTOMER_ID_RE` recogniser (and `EMPLOYEE_…` matches
+  `_EMPLOYEE_ID_RE`). Harmless in M2 (detection always runs before
+  substitution), but M3's response scanner MUST restore known tokens
+  BEFORE scanning responses, or tokens will be re-tokenised. A unit
+  test pins this boundary (TestTokenNamespaceDisjointness
+  ::test_known_redetection_boundary_for_m3).
+- **Log field naming**: `log_event` rejects any key containing
+  `token`/`mapping` by construction (logging.py forbidden-key regex),
+  so the processed event's new field is `substituted`; the report
+  field is `tokenised_spans` (counts document spans only — reports
+  never carry token or raw values) and is never logged.
+- **Session state lives on the vault**: `protected_instruction` is an
+  attribute of SessionTokenVault — one object holds the whole session
+  state for the M3 caller. A 5-tuple return was rejected as churn with
+  no security gain.
+- **Bounded collision retry**: 100 factory draws per mapping, then
+  `TokenCollisionError` (a GatewayError) → pipeline BLOCK
+  `error:TokenCollisionError` (fail closed — never a raw passthrough
+  on token generation failure). A token equal to its raw value
+  (fixed point) is skipped and redrawn.
+- **BLOCK paths return an empty vault**: the exception handlers clear
+  partial session mappings before returning; a blocked request leaves
+  no token state behind.
+- **InstructionSecretError handled before the generic handler**: an
+  instruction secret becomes BLOCK `secret:<TYPE>`, not
+  `error:InstructionSecretError`. The message carries the type name
+  only, never the raw value.
+- **TokenVault protocol**: `token_for/restore/tokens/clear/__len__` —
+  the abstraction boundary where the MVP persistent vault plugs in;
+  `restore` of an unknown token returns None (never fabricates).
+- **Zero detection changes**: M2 adapts to the existing recognisers,
+  not vice versa; the benchmark was not re-run (no pipeline coupling
+  in benchmark/scripts — verified by grep).
+
 ## 2026-08-16 — M1 Calibration Decisions (benchmark loop)
 
 First benchmark run: aggregate P=0.6867 (required 0.80), PERSON

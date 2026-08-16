@@ -66,6 +66,21 @@ Even sanitised content is sent to an external LLM provider and is
 subject to the provider's data handling and retention. Tokenisation is
 pseudonymisation, not mathematical anonymity.
 
+## Development
+
+Python >= 3.12. Dependencies include the Chinese spaCy model
+`zh_core_web_lg` (~575MB download).
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -e ".[dev]"   # or: uv pip install -p .venv -e ".[dev]"
+.venv/bin/pytest tests/unit tests/security
+.venv/bin/pytest -m benchmark tests/benchmark/   # slow: full detection benchmark
+.venv/bin/python scripts/check_acceptance.py     # M1 acceptance gates
+```
+
+Benchmark outputs go to `bench_reports/` (gitignored).
+
 ## License
 
 Apache-2.0 — see [LICENSE](LICENSE).

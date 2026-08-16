@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "secure-ai-gateway"
+version = "0.3.0"
+description = "Enterprise AI data-protection gateway: use external LLMs on business documents without exposing confidential data"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+authors = [{ name = "ian0318git" }]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.12",
+]
+
+# Pinned for M1 (see docs/DECISIONS.md):
+# presidio-analyzer 2.2.364 requires spacy>=3.4.4,!=3.7.0,<4.0.0;
+# zh-core-web-lg 3.6.0 requires spacy>=3.6.0,<3.7.0 -> spacy==3.6.1.
+dependencies = [
+    "charset-normalizer==3.3.2",
+    "spacy==3.6.1",
+    "zh-core-web-lg==3.6.0",
+    "presidio-analyzer==2.2.364",
+    "pandas>=2.2,<3",
+    "openpyxl>=3.1.2,<3.2",
+    "defusedxml==0.7.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<9",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "benchmark: long-running benchmark suite (run with -m benchmark)",
+]

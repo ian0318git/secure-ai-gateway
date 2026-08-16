@@ -23,3 +23,5 @@ htmlcov/
 # Local artifacts
 tmp/
 *.log
+bench_reports/
+bench_cache/

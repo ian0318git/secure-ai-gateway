@@ -55,13 +55,16 @@ It does **not** replace enterprise governance:
 
 ## Status
 
-- Phase: **M2 — tokenisation (implemented)**
+- Phase: **M3 — LLM integration (implemented)**
 - M0 design review: done (v0.3)
 - M1 detection: done — benchmark acceptance PASS (aggregate
   precision 0.8458 / recall 0.9738; see `docs/DECISIONS.md`)
-- M2 tokenisation: implemented — session-scoped vault, span-level
+- M2 tokenisation: done — session-scoped vault, span-level
   substitution, instruction protection, security test suite
-- M3 (LLM integration) begins only after M2 acceptance and human
+- M3 LLM integration: done — Anthropic provider (stdlib, zero new
+  dependencies), protected request builder, session orchestrator,
+  interactive CLI; response scanning/restoration is M4 (not yet built)
+- M4 (response protection) begins after M3 acceptance and human
   approval (see `docs/POC_PLAN.md`)
 
 ## How it works
@@ -78,11 +81,20 @@ Detection (Presidio + Chinese NLP backend) -> injection detection
         |
         v
 Response scanner -> token restoration (internal) -> final result
+                         (M4 — not built yet)
 ```
 
 Token mappings are random, non-sequential, scoped to one gateway
 invocation, and destroyed at session end. They never appear in LLM
 requests, logs, reports, or client-visible surfaces.
+
+Try the demo:
+
+```bash
+export ANTHROPIC_API_KEY=sk-...          # real API call
+.venv/bin/python -m secure_ai_gateway.cli --file data.csv \
+    --instruction "請分析毛利率趨勢"       # --provider fake = offline demo
+```
 
 ## Documents
 

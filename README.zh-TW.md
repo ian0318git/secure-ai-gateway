@@ -43,12 +43,15 @@
 
 ## 現況
 
-- 階段：**M2 — tokenisation（已實作）**
+- 階段：**M3 — LLM 整合（已實作）**
 - M0 設計審查：完成（v0.3）
 - M1 偵測：完成 — benchmark acceptance PASS（aggregate precision 0.8458 /
   recall 0.9738；見 `docs/DECISIONS.md`）
-- M2 tokenisation：已實作 — session vault、span 級替換、指令保護、安全測試套件
-- M3（LLM 整合）在 M2 acceptance 與人工核准後才開始（見 `docs/POC_PLAN.md`）
+- M2 tokenisation：完成 — session vault、span 級替換、指令保護、安全測試套件
+- M3 LLM 整合：完成 — Anthropic provider（stdlib、零新依賴）、protected
+  request builder、session orchestrator、互動 CLI；response 掃描/還原是 M4
+  （尚未實作）
+- M4（回應保護）在 M3 acceptance 與人工核准後才開始（見 `docs/POC_PLAN.md`）
 
 ## 運作方式
 
@@ -64,10 +67,19 @@
         |
         v
 回應掃描 -> token 還原（內部）-> 最終結果
+              （M4 — 尚未實作）
 ```
 
 Token 對應表是隨機、非順序、單一 gateway 呼叫範圍，session 結束即銷毀；
 絕不出現在 LLM 請求、log、report 或任何 client 可見的介面。
+
+試試 demo：
+
+```bash
+export ANTHROPIC_API_KEY=sk-...          # 真實 API 呼叫
+.venv/bin/python -m secure_ai_gateway.cli --file data.csv \
+    --instruction "請分析毛利率趨勢"       # --provider fake = 離線 demo
+```
 
 ## 文件
 

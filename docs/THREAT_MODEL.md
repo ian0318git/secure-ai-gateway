@@ -1,6 +1,6 @@
 # Secure AI Gateway — Threat Model
 
-Version: 0.3
+Version: 0.4
 Methodology: STRIDE
 Status: Draft
 
@@ -19,6 +19,8 @@ The threat model covers:
 - LLM response handling
 - token restoration
 - logging
+- persistent token storage (M6, opt-in encrypted store — T-T05,
+  T-T06, T-I10, T-I11, T-D04)
 
 It does not attempt to fully model the internal security of an
 external LLM provider.
@@ -181,6 +183,51 @@ Applicable
 Mitigation:
 
 - formula-prefix neutralisation or blocking (SR-025)
+
+---
+
+### T-T05 — Persistent Store Tampering
+
+An attacker with write access to the store file (M6, opt-in encrypted
+store) modifies, truncates, or forges the encrypted mapping data.
+
+Impact:
+Incorrect or malicious data restoration; silent mapping corruption.
+
+Status:
+Applicable
+
+Mitigation:
+
+- Fernet authenticated encryption (AES-128-CBC + HMAC-SHA256): any
+  tampering fails the HMAC at load and the gateway fails closed
+- versioned, shape-validated JSON payload (wrong version / wrong
+  shape -> fail closed)
+- atomic write (tmp + fsync + rename): a crash cannot leave a
+  half-written store
+
+---
+
+### T-T06 — Persistent Store Replacement (Rollback)
+
+An attacker replaces the store file with a different valid store (an
+old copy, or a store from another environment).
+
+Impact:
+Stale or cross-environment token mappings; restored values no longer
+match the raw data that produced them.
+
+Status:
+Applicable
+
+Mitigation:
+
+- a legitimately encrypted store decrypts fine: replacement cannot be
+  detected from the ciphertext alone
+- filesystem-level access control on the store file
+- PoC residual: no store fingerprint / generation marker — recorded
+  in DECISIONS (M6, D6); an MVP store should add a store ID and a
+  monotonic generation counter
 
 ---
 
@@ -351,6 +398,51 @@ Mitigation:
 
 ---
 
+### T-I10 — At-Rest Disclosure of Token Mappings
+
+An attacker steals the store file (M6, opt-in encrypted store).
+
+Impact:
+Raw <-> token correspondence (pseudonymous identities) exposed.
+
+Status:
+Applicable
+
+Mitigation:
+
+- Fernet encryption at rest (AES-128-CBC + HMAC)
+- the master key is never stored alongside the store: it comes from
+  the VAULT_MASTER_KEY environment variable only
+- key entropy: 32 random bytes (256 bits) — the key is the single
+  point of failure
+- negative test: the store file bytes contain no raw value, no
+  token, and no JSON structure (opaque ciphertext)
+
+---
+
+### T-I11 — Persistent Store Master Key Compromise
+
+An attacker obtains VAULT_MASTER_KEY (process environment, shell
+history, CI logs, a committed .env).
+
+Impact:
+Full disclosure of every mapping in every store encrypted with that
+key.
+
+Status:
+Applicable
+
+Mitigation:
+
+- the key is never logged, never printed, never committed
+  (SR-009/SR-011-style rules, pinned by tests)
+- environment-variable-only transport, mirroring ANTHROPIC_API_KEY
+- PoC residual: no key rotation — rotating the key orphans existing
+  stores (fail closed on decrypt); KMS integration is an MVP concern
+  (OQ-003)
+
+---
+
 ## D — Denial of Service
 
 ### T-D01 — Request Flooding
@@ -389,6 +481,25 @@ Mitigation:
 - request limits
 - token limits
 - budget controls
+
+---
+
+### T-D04 — Persistent Store Growth Exhaustion
+
+The store grows without bound (M6: every distinct raw value is
+retained forever), eventually exhausting disk.
+
+Impact:
+Denial of service; operational failure.
+
+Status:
+Applicable
+
+Mitigation:
+
+- documented residual (DECISIONS M6, D6): no cap, compaction, or
+  retention in the PoC
+- MVP: retention policy, compaction, store quotas
 
 ---
 
@@ -474,6 +585,8 @@ These limitations must remain documented.
 | T-T02 | Policy tampering | Applicable |
 | T-T03 | Token namespace collision | Applicable |
 | T-T04 | Spreadsheet formula injection | Applicable |
+| T-T05 | Persistent store tampering | Applicable |
+| T-T06 | Persistent store replacement (rollback) | Applicable |
 | T-R01 | Repudiation | Applicable |
 | T-I01 | Raw PII leakage | Applicable |
 | T-I02 | Secret leakage | Applicable |
@@ -484,9 +597,12 @@ These limitations must remain documented.
 | T-I07 | Data reconstruction | Applicable |
 | T-I08 | Raw identifiers in the user instruction | Applicable |
 | T-I09 | Encoding-based detection evasion | Applicable |
+| T-I10 | At-rest disclosure of token mappings | Applicable |
+| T-I11 | Store master key compromise | Applicable |
 | T-D01 | Request flooding | Applicable |
 | T-D02 | Resource exhaustion | Applicable |
 | T-D03 | LLM cost abuse | Applicable |
+| T-D04 | Store growth exhaustion | Applicable |
 | T-E01 | Policy bypass | Applicable |
 | T-E02 | Privilege escalation | Applicable |
 
@@ -505,9 +621,14 @@ These limitations must remain documented.
 | T-I07 | Data minimisation + opaque tokens | Design review + tests |
 | T-I08 | Instruction channel pipeline (SR-022) | Security tests |
 | T-I09 | Encoding detection (SR-025) | Unit tests |
+| T-I10 | Fernet at-rest encryption (SR-026) | Security tests |
+| T-I11 | Env-only master key handling (SR-026) | Security tests |
 | T-T03 | Reserved token format (SR-023) | Security tests |
 | T-T04 | Formula neutralisation (SR-025) | Unit tests |
+| T-T05 | Fernet authenticated encryption + atomic write + version/shape validation (SR-026) | Security tests |
+| T-T06 | Filesystem access control (residual: no store fingerprint, DECISIONS M6 D6) | Design review |
 | T-D02 | File/resource limits | Unit/security tests |
+| T-D04 | Documented residual — no cap/compaction (DECISIONS M6 D6) | Design review |
 | T-E01 | Server-side policy enforcement | Security tests |
 | T-E02 | Server-side authorisation | Security tests |
 

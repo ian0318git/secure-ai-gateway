@@ -70,3 +70,33 @@ Verification: `grep -rn "<test>" tests/` resolves every reference.
 - **NER context merging** (M4, unchanged): a restored value merged
   with adjacent text by NER causes a conservative false-positive
   block — acceptable, fail closed.
+
+## M6 — Persistent token store (DECISIONS 2026-08-18, SR-019/026)
+
+| # | Threat | Requirement | Control | Verification |
+|---|---|---|---|---|
+| 1 | At-rest disclosure of token mappings (T-I10) | SR-026 | Fernet authenticated encryption; env-only key | `tests/security/test_m6_persistent_store.py::TestAtRestProtection::test_store_file_is_opaque_ciphertext` (byte-level: no raw, no token, no JSON structure); `tests/unit/test_persistent_vault.py::TestKeyLoading` (7 key tests) |
+| 2 | Store tampering (T-T05) | SR-026 | Fernet HMAC + version/shape validation + atomic write | `test_tampered_ciphertext_fails_closed`, `test_truncated_file_fails_closed`, `test_empty_file_fails_closed`, `test_wrong_key_fails_closed`, `test_non_json_plaintext_fails_closed`, `test_wrong_version_fails_closed`, `test_bad_mappings_shape_fails_closed` |
+| 3 | Store master key compromise (T-I11) | SR-011/026 | env-var-only key, never logged/committed | `tests/unit/test_cli_vault_store.py::test_vault_store_missing_key_exits_2`, `test_vault_store_invalid_key_exits_2`; `test_vault_store_open_log_has_no_content` (no raw, no `mappings` key in log) |
+| 4 | Store replacement / rollback (T-T06) | SR-026 | (residual: filesystem access control; no fingerprint — DECISIONS D6) | design review; residual recorded |
+| 5 | Store growth exhaustion (T-D04) | — | (residual: no cap/compaction — DECISIONS D6) | design review; residual recorded |
+| 6 | Previous-session token in response (D1) | SR-019/021/026 | restore() stays session-scoped; store is token_for supplier only | `tests/security/test_m6_persistent_store.py::TestCrossSessionSemantics::test_previous_session_token_in_response_blocks` (`response:unknown_token`), `test_same_session_token_delivers`, `test_pipeline_factory_shared_store_reuses_tokens` |
+| 7 | Cross-session identity reuse (opt-in) | SR-026 | `--vault-store` + PersistentSessionVault token_for order | `tests/unit/test_cli_vault_store.py::test_vault_store_reuses_tokens_across_runs` (store decrypted to prove same token); `tests/unit/test_persistent_vault.py` (reuse without rewrite, collision guard, clear-keeps-store) |
+| 8 | Store file never committed | SR-002/026 | `.gitignore` | `tests/security/test_m6_persistent_store.py::TestRepoHygiene::test_gitignore_excludes_vault_stores` |
+| 9 | Blocked session leaves store unchanged | SR-010/026 | commits only after policy pass | `tests/unit/test_cli_vault_store.py::test_vault_store_blocked_session_leaves_store_unchanged` (byte comparison); `test_vault_store_tampered_fails_closed` (fail closed at startup, exit 2, no session ran) |
+
+## M6 acceptance (DECISIONS 2026-08-18)
+
+1. Full suite green: 752 tests (706 pre-M6 + 46 new; zero existing
+   tests modified).
+2. At-rest opacity: the store file bytes contain no raw value, no
+   token, and no JSON structure (`test_store_file_is_opaque_ciphertext`).
+3. Every store failure path fails closed (tamper / truncate / empty /
+   wrong key / non-JSON / wrong version / wrong shape), and every key
+   failure fails closed (missing / invalid env var) — never a silent
+   reset or partial load.
+4. D1 pinned: a previous-session token in a response is still
+   `response:unknown_token`; same-session restoration still delivers.
+5. Opt-in semantics pinned: without `--vault-store`, default
+   session-only behaviour is unchanged (706 pre-M6 tests untouched
+   and green).

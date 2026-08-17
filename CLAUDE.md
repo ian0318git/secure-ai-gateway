@@ -131,7 +131,9 @@ Implementation begins only after human approval.
 13. Do not silently replace the approved Chinese PII detection
     architecture with an English-only solution.
 14. Do not introduce persistent cross-session identity mapping during
-    the PoC.
+    the PoC. (Approved exception 2026-08-18: an OPT-IN encrypted
+    persistent store via `--vault-store PATH` + `VAULT_MASTER_KEY`,
+    M6/SR-026; without the flag this rule is unchanged.)
 15. The policy engine defaults to deny: secrets block the request, PII
     is tokenised, non-required columns are dropped.
 16. The user instruction is protected input, like the document. Raw
@@ -187,7 +189,10 @@ Cross-session identity consistency is NOT a PoC requirement.
 The same entity may therefore receive a different token in another
 session.
 
-Persistent secure token storage is an MVP concern.
+Persistent secure token storage is an MVP concern. (Approved
+exception 2026-08-18: an OPT-IN Fernet-encrypted store shipped in M6,
+SR-026 — see §6.14. It activates only with `--vault-store PATH` plus
+`VAULT_MASTER_KEY`; default sessions remain session-only.)
 
 ---
 

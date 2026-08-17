@@ -44,7 +44,7 @@
 
 ## 現況
 
-- 階段：**M5 — 安全測試套件（已實作）**
+- 階段：**M6 — 持久 token 儲存（已實作，opt-in）**
 - M0 設計審查：完成（v0.3）
 - M1 偵測：完成 — benchmark acceptance PASS（aggregate precision 0.8458 /
   recall 0.9738；見 `docs/DECISIONS.md`）
@@ -59,6 +59,11 @@
   （mirror rule、`response:injection:<CAT>`）；窮舉 fail-closed sweep
   （22 條失敗路徑、trust boundary 前零 provider calls）；SR-016 audit
   event battery；benchmark 證據以規範門檻自動 re-check
+- M6 持久 token 儲存：完成（opt-in）— `--vault-store PATH` +
+  `VAULT_MASTER_KEY` 讓 token 身分跨 session 保持穩定，存入
+  Fernet 加密 JSON store（SR-026）；預設 session 維持 session-only；
+  restore() 維持 session 範圍（舊 session token 出現在回應仍會
+  阻擋，fail closed）；752 tests 全綠
 
 ## 運作方式
 
@@ -88,14 +93,25 @@ export ANTHROPIC_API_KEY=sk-...          # 真實 API 呼叫
     --instruction "請分析毛利率趨勢"       # --provider fake = 離線 demo
 ```
 
+持久 token 儲存（M6，opt-in — 跑兩次，token 相同）：
+
+```bash
+export VAULT_MASTER_KEY=$(.venv/bin/python -c \
+    "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+.venv/bin/python -m secure_ai_gateway.cli --file data.csv \
+    --provider fake --vault-store tmp/demo.vault
+.venv/bin/python -m secure_ai_gateway.cli --file data.csv \
+    --provider fake --vault-store tmp/demo.vault   # 再次執行，token 相同
+```
+
 ## 文件
 
 - `CLAUDE.md` — Claude Code 專案指令（安全規則、milestone 關卡）
 - `docs/DESIGN.md` — 架構與設計規格
-- `docs/SECURITY_REQUIREMENTS.md` — 安全需求（SR-001 … SR-025）
-- `docs/THREAT_MODEL.md` — STRIDE 威脅模型（20 項威脅）
-- `docs/POC_PLAN.md` — M0–M5 milestones 與驗收標準
-- `docs/DECISIONS.md` — 決策紀錄（M0/M1/M2）
+- `docs/SECURITY_REQUIREMENTS.md` — 安全需求（SR-001 … SR-026）
+- `docs/THREAT_MODEL.md` — STRIDE 威脅模型（25 項威脅）
+- `docs/POC_PLAN.md` — M0–M6 milestones 與驗收標準
+- `docs/DECISIONS.md` — 決策紀錄（M0/M1/M2/M5/M6）
 
 ## 決策（M0, v0.3 記錄）
 

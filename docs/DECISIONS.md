@@ -5,7 +5,63 @@ Reverse-chronological.
 
 ---
 
-## 2026-08-17 — M5 Security Test Suite Decisions
+## 2026-08-18 — M6 Persistent Token Store Decisions
+
+**Approval record**: the user approved 2026-08-18 an opt-in encrypted
+persistent token store, explicitly relaxing SR-019's default ban on
+cross-session persistence for this feature only. Persistence activates
+exclusively with `--vault-store PATH` plus a valid `VAULT_MASTER_KEY`;
+without the flag every session-only guarantee is unchanged (recorded
+in SR-019 and CLAUDE.md §6.14/§8).
+
+- **D1 — The persistent layer is a token_for supplier, never a
+  restore supplier**: restore() stays session-scoped. A token issued
+  in an earlier session that appears in an LLM response is still an
+  unknown token -> `response:unknown_token` (fail closed, guard step
+  1). Session semantics are unchanged: session.py, vault.py, guard.py
+  were not modified.
+- **D2 — PersistentSessionVault(SessionTokenVault) subclass**:
+  token_for order = session map -> store reuse (registered into the
+  session map) -> fresh generation + write-through commit. clear()
+  clears only the session map; the store survives (that is the point
+  of the SR-019 relaxation). __len__/restore/tokens stay inherited
+  and session-scoped, so all ~20 "vault is empty at session end"
+  assertions remain green. __repr__ reports counts only.
+- **D3 — Key/store failures always fail closed**: VaultKeyError
+  (missing env var, non-base64, not 32 bytes, Fernet construction)
+  and VaultStoreError (tamper, truncation, 0-byte, wrong key,
+  non-JSON, wrong version, wrong shape, IO) — both GatewayError
+  subclasses. Never a silent reset or partial load.
+- **D4 — Atomic write**: tmp file + flush + fsync + os.replace; tmp
+  cleaned on failure. A crash cannot leave a half-written store.
+- **D5 — Injection seam**: Pipeline.__init__ gains a keyword-only
+  vault_factory; process_file resolves it lazily, so the M5
+  token-collision monkeypatch (patch pipeline.SessionTokenVault)
+  keeps working. CLI: `--vault-store` setup failures exit 2; a
+  mid-session store failure blocks with `error:VaultStoreError`.
+- **D6 — Recorded residuals**: ① unbounded store growth — no cap,
+  compaction, or retention (T-D04); ② single-process assumption —
+  concurrent processes risk lost updates, never corruption (rename is
+  atomic, no torn reads); ③ no key rotation — rotating the key
+  orphans existing stores (fail closed on decrypt, T-I11); ④ no
+  directory fsync after rename; ⑤ no store fingerprint/generation
+  marker — replacement with a different valid store is not detectable
+  from ciphertext (T-T06); ⑥ no key derivation — the raw 32-byte
+  base64 env var is used directly; ⑦ a BLOCKed session commits
+  nothing (store unchanged — pinned by byte comparison); a
+  mid-session failure leaves only the already-committed valid pairs.
+  All residuals are MVP candidates (OQ-003).
+- **D7 — Collision self-heal guard**: if a store-supplied token
+  collides with a token this session already issued to another raw
+  value (pathological fixed-factory case), `stored not in
+  self._reverse` skips reuse, issues a fresh token, and overwrites
+  that raw value's store entry.
+- **M6 acceptance**: 752 tests green (706 existing + 46 new, zero
+  existing tests modified); fail-closed pins in
+  tests/security/test_m6_persistent_store.py; CLI cross-run identity
+  reuse pinned in tests/unit/test_cli_vault_store.py; at-rest opacity
+  pinned byte-level (no raw, no token, no JSON structure in the
+  store file).
 
 - **D1 — Response-side prompt injection: mirror rule**: the M4
   deferral is closed (user decision). The response guard scans the

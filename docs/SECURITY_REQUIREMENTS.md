@@ -233,6 +233,13 @@ persistence.
 Cross-session token identity persistence MUST NOT be implemented unless
 explicitly approved.
 
+Explicit approval was granted 2026-08-18 for an OPT-IN encrypted
+persistent store (M6, SR-026): persistence activates only with
+`--vault-store PATH` plus a valid `VAULT_MASTER_KEY`. Without the
+flag, this requirement's behaviour is unchanged (session-only).
+The persistent layer is a token_for supplier only; restore() remains
+session-scoped (SR-026).
+
 ---
 
 # SR-020 — Chinese NLP Configuration
@@ -291,3 +298,23 @@ evade PII detection through mojibake.
 
 Spreadsheet cells beginning with formula prefixes (=, +, -, @) MUST be
 neutralised or blocked before processing.
+
+---
+
+# SR-026 — Persistent Token Store Protection
+
+The opt-in persistent token store (M6, `--vault-store PATH`) MUST
+protect token mappings at rest and fail closed:
+
+- mappings at rest MUST be authenticated-encrypted (Fernet:
+  AES-128-CBC + HMAC-SHA256)
+- the master key comes from the `VAULT_MASTER_KEY` environment
+  variable only (urlsafe base64 of 32 random bytes); it MUST never be
+  hard-coded, committed, or logged
+- a missing or invalid key MUST fail closed before any session runs
+- a tampered, truncated, or incompatible store MUST fail closed
+  (never a silent reset or partial load)
+- the store file MUST never be committed to Git (`.gitignore`)
+- the persistent layer is a token_for supplier only: restore() stays
+  session-scoped, so a token issued in an earlier session is never
+  restored (fail closed, response guard step 1)

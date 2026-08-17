@@ -429,3 +429,6 @@ After PoC success, consider:
 - monitoring
 - SIEM integration
 - persistent cross-session tokenisation if a justified use case exists
+  (note: M6 shipped an opt-in encrypted local store 2026-08-18,
+  SR-026 — production-grade integration remains: KMS, rotation,
+  retention)

@@ -56,7 +56,7 @@ It does **not** replace enterprise governance:
 
 ## Status
 
-- Phase: **M5 — Security test suite (implemented)**
+- Phase: **M6 — Persistent token store (implemented, opt-in)**
 - M0 design review: done (v0.3)
 - M1 detection: done — benchmark acceptance PASS (aggregate
   precision 0.8458 / recall 0.9738; see `docs/DECISIONS.md`)
@@ -76,6 +76,11 @@ It does **not** replace enterprise governance:
   exhaustive fail-closed sweep (22 failure paths, zero provider calls
   before the boundary); SR-016 audit-event battery; benchmark
   evidence re-checked normatively against the documented thresholds
+- M6 persistent token store: done (opt-in) — `--vault-store PATH` +
+  `VAULT_MASTER_KEY` keeps token identities stable across sessions in
+  a Fernet-encrypted JSON store (SR-026); default sessions stay
+  session-only; restore() stays session-scoped (a previous-session
+  token in a response still blocks, fail closed); 752 tests green
 
 ## How it works
 
@@ -106,14 +111,25 @@ export ANTHROPIC_API_KEY=sk-...          # real API call
     --instruction "請分析毛利率趨勢"       # --provider fake = offline demo
 ```
 
+Persistent token store (M6, opt-in — run twice, same tokens):
+
+```bash
+export VAULT_MASTER_KEY=$(.venv/bin/python -c \
+    "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+.venv/bin/python -m secure_ai_gateway.cli --file data.csv \
+    --provider fake --vault-store tmp/demo.vault
+.venv/bin/python -m secure_ai_gateway.cli --file data.csv \
+    --provider fake --vault-store tmp/demo.vault   # same tokens again
+```
+
 ## Documents
 
 - `CLAUDE.md` — Claude Code project instructions (security rules, milestone gates)
 - `docs/DESIGN.md` — architecture and design specification
-- `docs/SECURITY_REQUIREMENTS.md` — security requirements (SR-001 … SR-025)
-- `docs/THREAT_MODEL.md` — STRIDE threat model (20 threats)
-- `docs/POC_PLAN.md` — milestones M0–M5 and acceptance criteria
-- `docs/DECISIONS.md` — decision log (M0/M1/M2)
+- `docs/SECURITY_REQUIREMENTS.md` — security requirements (SR-001 … SR-026)
+- `docs/THREAT_MODEL.md` — STRIDE threat model (25 threats)
+- `docs/POC_PLAN.md` — milestones M0–M6 and acceptance criteria
+- `docs/DECISIONS.md` — decision log (M0/M1/M2/M5/M6)
 
 ## Decisions (recorded at M0, v0.3)
 

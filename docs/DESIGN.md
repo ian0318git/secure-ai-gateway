@@ -83,7 +83,8 @@ The PoC will NOT implement:
 - real company data processing
 - autonomous security decisions
 - production-grade scalability
-- cross-session identity persistence
+- cross-session identity persistence (except the M6 opt-in encrypted
+  store — explicitly approved 2026-08-18; see §11.1)
 
 These may be considered during MVP.
 
@@ -412,6 +413,32 @@ sessions.
 
 Token mappings must never enter the external LLM context.
 
+## 11.1 Persistent token store (M6, opt-in)
+
+An encrypted persistent store was implemented 2026-08-18 (SR-026,
+explicit approval recorded in SR-019). It is strictly opt-in:
+`--vault-store PATH` plus `VAULT_MASTER_KEY` (urlsafe base64 of 32
+random bytes); without the flag the session-only behaviour is
+unchanged.
+
+- single JSON file `{"version": 1, "mappings": {<TYPE>: {<raw>:
+  <token>}}}`, Fernet-encrypted (AES-128-CBC + HMAC-SHA256), written
+  atomically (tmp + fsync + rename)
+- the persistent layer is a **token_for supplier only**: restore()
+  stays session-scoped, so a token issued in an earlier session that
+  appears in an LLM response is still an unknown token (response
+  guard, fail closed)
+- fail closed on missing/invalid key and on tampered, truncated,
+  wrong-key, wrong-version, or wrong-shape stores — never a silent
+  reset or partial load
+- the master key is a single point of failure: it is never stored
+  beside the store, never committed, never logged
+- recorded residuals (DECISIONS M6, D6): unbounded store growth (no
+  compaction/retention), single-process assumption (lost updates, not
+  corruption), no key rotation (rotating orphans existing stores),
+  no store fingerprint (valid-store replacement is not detectable
+  from ciphertext — T-T06)
+
 ---
 
 # 12. Data Minimisation
@@ -671,7 +698,9 @@ Potential MVP capabilities:
 - enterprise DLP integration
 - rate limiting
 - stronger prompt injection detection
-- persistent cross-session tokenisation if justified
+- persistent cross-session tokenisation if justified (M6: an opt-in
+  encrypted local store shipped 2026-08-18, §11.1; production-grade
+  integration — KMS, rotation, retention — remains)
 
 ---
 
@@ -724,11 +753,12 @@ The PoC may use an in-memory/local implementation.
 
 MVP should evaluate:
 
-- encrypted persistent storage
-- Vault/KMS integration
-- key rotation
-- retention
-- access control
+- encrypted persistent storage — **RESOLVED (2026-08-18, M6)**: opt-in
+  Fernet-encrypted JSON store, see §11.1 and SR-026
+- Vault/KMS integration — open (MVP)
+- key rotation — open (MVP; rotating orphans existing stores)
+- retention — open (MVP)
+- access control — open (MVP)
 
 ---
 

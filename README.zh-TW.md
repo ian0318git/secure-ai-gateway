@@ -39,19 +39,23 @@
   Tokenisation 保護的是 PII，不是「所有機密」。
 - ❌ 安全邊界就是信任環境本身：控制閘道的人就能讀到對應表（threat model
   有 cover）。
-- ❌ LLM 的回應仍可能包含敏感內容 — 回應保護是 M4 的範圍。
+- ❌ LLM 的回應仍可能包含敏感內容 — 回應 guard 加以緩解：含敏感內容或違反
+  政策的回應一律阻擋（fail closed），未知 token 永不還原。
 
 ## 現況
 
-- 階段：**M3 — LLM 整合（已實作）**
+- 階段：**M4 — 回應保護（已實作）**
 - M0 設計審查：完成（v0.3）
 - M1 偵測：完成 — benchmark acceptance PASS（aggregate precision 0.8458 /
   recall 0.9738；見 `docs/DECISIONS.md`）
 - M2 tokenisation：完成 — session vault、span 級替換、指令保護、安全測試套件
 - M3 LLM 整合：完成 — Anthropic provider（stdlib、零新依賴）、protected
-  request builder、session orchestrator、互動 CLI；response 掃描/還原是 M4
-  （尚未實作）
-- M4（回應保護）在 M3 acceptance 與人工核准後才開始（見 `docs/POC_PLAN.md`）
+  request builder、session orchestrator、互動 CLI
+- M4 回應保護：完成 — 回應 guard（重用偵測引擎做敏感資料掃描、未知/幻覺 token
+  偵測、marker echo 任務合規檢查、受控 token 還原）；違規以 `response:<category>`
+  機器可讀 reason fail closed；截斷（`stop_reason: max_tokens`）一律阻擋
+- M5（安全測試套件擴充）在 M4 acceptance 與人工核准後才開始（見
+  `docs/POC_PLAN.md`）
 
 ## 運作方式
 
@@ -66,8 +70,8 @@
         外部 LLM（只收去識別化資料）
         |
         v
-回應掃描 -> token 還原（內部）-> 最終結果
-              （M4 — 尚未實作）
+回應 guard：token 驗證 -> marker 檢查 -> 還原已知 token
+        -> 敏感資料掃描 -> 受控還原（最終結果）
 ```
 
 Token 對應表是隨機、非順序、單一 gateway 呼叫範圍，session 結束即銷毀；

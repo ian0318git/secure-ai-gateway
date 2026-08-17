@@ -50,12 +50,13 @@ It does **not** replace enterprise governance:
 - ❌ The security boundary is the trusted environment itself: whoever
   controls the gateway can read the mapping (covered by the threat
   model).
-- ❌ LLM output may still contain sensitive content — response
-  protection is milestone M4.
+- ❌ LLM output may still contain sensitive content — the response
+  guard mitigates it: sensitive or policy-violating responses are
+  blocked (fail closed), unknown tokens are never restored.
 
 ## Status
 
-- Phase: **M3 — LLM integration (implemented)**
+- Phase: **M4 — Response protection (implemented)**
 - M0 design review: done (v0.3)
 - M1 detection: done — benchmark acceptance PASS (aggregate
   precision 0.8458 / recall 0.9738; see `docs/DECISIONS.md`)
@@ -63,9 +64,14 @@ It does **not** replace enterprise governance:
   substitution, instruction protection, security test suite
 - M3 LLM integration: done — Anthropic provider (stdlib, zero new
   dependencies), protected request builder, session orchestrator,
-  interactive CLI; response scanning/restoration is M4 (not yet built)
-- M4 (response protection) begins after M3 acceptance and human
-  approval (see `docs/POC_PLAN.md`)
+  interactive CLI
+- M4 response protection: done — response guard (sensitive-data scan
+  reusing the detection engine, unknown/hallucinated token detection,
+  marker-echo task-compliance check, controlled token restoration);
+  violations fail closed with machine-readable `response:<category>`
+  reasons; truncation (`stop_reason: max_tokens`) blocks
+- M5 (security test suite expansion) begins after M4 acceptance and
+  human approval (see `docs/POC_PLAN.md`)
 
 ## How it works
 
@@ -80,8 +86,8 @@ Detection (Presidio + Chinese NLP backend) -> injection detection
         External LLM (sanitised data only)
         |
         v
-Response scanner -> token restoration (internal) -> final result
-                         (M4 — not built yet)
+Response guard: token validation -> marker check -> restore known
+tokens -> sensitive-data scan -> controlled restoration (final result)
 ```
 
 Token mappings are random, non-sequential, scoped to one gateway

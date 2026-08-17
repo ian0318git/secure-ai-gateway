@@ -5,6 +5,68 @@ Reverse-chronological.
 
 ---
 
+## 2026-08-17 — M4 Response Protection Decisions
+
+- **Guard pipeline (fixed order)**: the response guard
+  (`response/guard.py`) runs inside the trusted environment, between
+  "response parsed" and "vault cleared" (session-owned, SR-019).
+  Violation priority: ① `response:unknown_token` (pre-restore;
+  acceptance — unknown tokens are never restored) → ②
+  `response:marker_echo` (framing markers echoed) → ③
+  `response:secret:<TYPE>` (severity-ordered, mirror of the request
+  block types) → ④ `response:pii:<TYPE>` → ⑤ `response:truncated`
+  (last: the text itself passed; only completeness failed). Reasons
+  are machine-readable, raw-free, loggable.
+- **Restore-before-scan ordering (DESIGN §17 vs M2 flag)**: DESIGN §17
+  says "the response scanner always runs before token restoration";
+  the M2 flag says known tokens MUST be restored before scanning, or
+  `CUSTOMER_…` tokens are re-detected as PII. Both hold: restoration
+  is an internal pure function of the guard, not a delivery action.
+  Structural checks (token validation, marker echo) run pre-restore;
+  the sensitive scan runs on the about-to-be-delivered (restored)
+  text; nothing leaves the guard until every check has decided.
+  Pinned by `test_customer_token_restored_before_scan` (e2e) and the
+  M2 boundary unit test.
+- **Containment, not overlap**: a detection span is authorised iff it
+  lies entirely inside a single restored span (`r_start <= s.start
+  and s.end <= r_end`). An overlap rule would leak the second value
+  of a merged span (`王小明、李大同`); containment blocks it.
+  Adjacent restored values merged by NER cause a conservative
+  false-positive block — acceptable, fail closed.
+- **Leak-vs-restored soundness**: the only authorised path for a raw
+  value to re-enter the response is "exists as a token string →
+  restored → inside a restored span". A vault-known value leaked as
+  raw text is still blocked — the model never saw the raw value.
+- **Unknown / invented tokens**: issued tokens are
+  `[A-Z][A-Z0-9]*_[0-9a-f]{8}` (public `TOKEN_RE`, the same shape the
+  wire-audit tests pin). A response token not in the vault →
+  `response:unknown_token` (hallucination, never restored). Reserved
+  6-hex shapes (`CUSTOMER_4f8a21`) do NOT match `TOKEN_RE` by design
+  (T-T03: reserved namespace ≠ issued namespace) and fall through to
+  the sensitive scan (`response:pii:TOKEN_PATTERN`; `CUSTOMER_`-
+  prefixed inventions surface as `response:pii:CUSTOMER_ID` first —
+  that recogniser sorts earlier).
+- **Truncation is a violation** (user decision): `stop_reason:
+  max_tokens` → BLOCK `response:truncated` — partial analysis is
+  never delivered (supersedes the M3 "partial text is still
+  delivered" note). An opt-out flag `truncation_is_violation=False`
+  exists for unit-level control.
+- **No response prompt-injection patterns** (user decision): M4 stays
+  within its bullets; the marker-echo check is the minimal
+  deterministic task-compliance control. Response injection detection
+  is deferred to a later milestone.
+- **NFKC once**: the guard normalises with NFKC first; token
+  validation, restore, scan, and marker checks all share that
+  coordinate space; delivered text = NFKC + restored.
+- **Response logging**: new event `response_blocked` logs only
+  `request_id` / `reason` / `response_chars` — no key carries token,
+  text, or payload substrings (SR-009); raw response content never
+  logged, never in the report.
+- **CLI demo**: `--provider fake` echoes the protected message minus
+  the framing markers (a real provider never echoes prompt structure)
+  so the offline demo exercises the real scan + restore path; the
+  "not scanned (M4)" note is gone.
+
 ## 2026-08-17 — M3 LLM Integration Decisions
 
 - **Provider: Anthropic Claude via stdlib urllib** (user decision). Zero

@@ -1,4 +1,4 @@
-"""M4 response guard: validate, restore, deliver (DESIGN §17, SR-008/021).
+"""M5 response guard: validate, restore, deliver (DESIGN §17, SR-008/021).
 
 LLM output is untrusted (SR-021). Every response passes through
 ``ResponseGuard.check`` before it can leave the trusted environment:
@@ -9,14 +9,22 @@ LLM output is untrusted (SR-021). Every response passes through
 2. task compliance — echoing the request section markers is a
    violation (cheap deterministic proxy for the "output the original
    data" parroting case, T-I06);
-3. controlled restoration (DECISIONS M2 flag: restore known tokens
+3. response-side prompt injection (M5) — the response is scanned with
+   the SAME pattern tables as the input detector (mirror rule,
+   DECISIONS M5): any pattern the input side treats as an attack is a
+   violation when the model authors it. Pre-restore: only the
+   model-authored surface (model words + token strings) is checked,
+   so an authorised restored vault value can never trigger it. A
+   response that quotes or analyses an attack is blocked too
+   (conservative — no LLM judge, CLAUDE.md §6.10/6.11);
+4. controlled restoration (DECISIONS M2 flag: restore known tokens
    BEFORE the sensitive scan, or tokens re-detect as PII) with output
    -space position tracking;
-4. sensitive-data scan on the text that would be delivered: only
+5. sensitive-data scan on the text that would be delivered: only
    detections fully contained in a restored span are authorised (the
    value came from our own vault); anything else — raw PII, secrets,
    invented reserved-format values — is a violation (fail closed);
-5. completeness: ``stop_reason == "max_tokens"`` is a violation by
+6. completeness: ``stop_reason == "max_tokens"`` is a violation by
    decision (the response is truncated; user decision, DECISIONS M4).
 
 Violations return a ``ResponseOutcome`` with status ``"blocked"`` and
@@ -33,6 +41,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from secure_ai_gateway.injection.detector import detect
 from secure_ai_gateway.llm.request_builder import (
     DOCUMENT_MARKER,
     INSTRUCTION_MARKER,
@@ -136,11 +145,24 @@ class ResponseGuard:
         if INSTRUCTION_MARKER in norm or DOCUMENT_MARKER in norm:
             return ResponseOutcome("blocked", reason="response:marker_echo")
 
-        # 3. Controlled restoration (M2 flag), tracking output-space
+        # 3. Response-side prompt injection (M5, mirror rule): the same
+        # pattern tables the input detector uses. Pre-restore, so only
+        # the model-authored surface is seen (restored vault values can
+        # never match — a real customer named "Bypass Security Policy
+        # Co." delivers). Any finding blocks with the first finding's
+        # category (detect() sorts deterministically).
+        findings = detect(norm, "response")
+        if findings:
+            return ResponseOutcome(
+                "blocked",
+                reason=f"response:injection:{findings[0].category.value}",
+            )
+
+        # 4. Controlled restoration (M2 flag), tracking output-space
         # positions so the scan can tell authorised values from leaks.
         restored, restored_spans = restore_text_with_spans(norm, vault)
 
-        # 4. Sensitive-data scan on the text that would be delivered.
+        # 5. Sensitive-data scan on the text that would be delivered.
         # Defensive skips first: stub engines may return spans whose
         # offsets do not fit the response (a real engine cannot) —
         # mirroring the degenerate-span skip in substitution._substitute.
@@ -173,7 +195,7 @@ class ResponseGuard:
                 "blocked", reason=f"response:pii:{s.entity_type.value}"
             )
 
-        # 5. Completeness: a truncated response is a violation by
+        # 6. Completeness: a truncated response is a violation by
         # decision (the text itself passed every scan).
         if self._truncation_is_violation and stop_reason == "max_tokens":
             return ResponseOutcome("blocked", reason="response:truncated")

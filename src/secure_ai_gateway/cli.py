@@ -22,6 +22,7 @@ from secure_ai_gateway.detection.engine import DetectionEngine
 from secure_ai_gateway.errors import ProviderConfigurationError
 from secure_ai_gateway.llm.provider import AnthropicProvider
 from secure_ai_gateway.llm.request_builder import LLMRequest
+from secure_ai_gateway.llm.response_parser import ParsedResponse
 from secure_ai_gateway.pipeline import Pipeline
 from secure_ai_gateway.session import Session
 
@@ -30,10 +31,10 @@ class EchoProvider:
     """Offline demo provider: returns the protected message exactly as
     it would be sent to the provider. No network, no API key."""
 
-    def complete(self, request: LLMRequest) -> str:
+    def complete(self, request: LLMRequest) -> ParsedResponse:
         content = request.to_body()["messages"][0]["content"]
         assert isinstance(content, str)
-        return content
+        return ParsedResponse(text=content, stop_reason="end_turn")
 
 
 def build_parser() -> argparse.ArgumentParser:

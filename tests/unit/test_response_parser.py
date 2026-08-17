@@ -10,7 +10,10 @@ from __future__ import annotations
 import pytest
 
 from secure_ai_gateway.errors import ResponseParseError
-from secure_ai_gateway.llm.response_parser import parse_response_text
+from secure_ai_gateway.llm.response_parser import (
+    parse_response,
+    parse_response_text,
+)
 
 
 def _text_payload(*blocks: str) -> dict:
@@ -80,3 +83,36 @@ class TestParseResponseText:
         with pytest.raises(ResponseParseError) as exc:
             parse_response_text({"type": "error", "error": {"msg": secret}})
         assert secret not in str(exc.value)
+
+
+class TestParseResponse:
+    """M4 stop_reason plumbing (text extraction reused verbatim)."""
+
+    def test_stop_reason_carried(self) -> None:
+        parsed = parse_response(
+            {"type": "message", "content": [{"type": "text", "text": "x"}],
+             "stop_reason": "max_tokens"}
+        )
+        assert parsed.text == "x"
+        assert parsed.stop_reason == "max_tokens"
+
+    def test_stop_reason_absent_is_none(self) -> None:
+        parsed = parse_response(
+            {"type": "message", "content": [{"type": "text", "text": "x"}]}
+        )
+        assert parsed.text == "x"
+        assert parsed.stop_reason is None
+
+    def test_malformed_stop_reason_fails_closed(self) -> None:
+        with pytest.raises(ResponseParseError):
+            parse_response(
+                {"type": "message",
+                 "content": [{"type": "text", "text": "x"}],
+                 "stop_reason": 42}
+            )
+
+    def test_repr_hides_text(self) -> None:
+        from secure_ai_gateway.llm.response_parser import ParsedResponse
+
+        parsed = ParsedResponse(text="內含機密字樣", stop_reason="end_turn")
+        assert "內含機密字樣" not in repr(parsed)

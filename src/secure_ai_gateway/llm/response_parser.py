@@ -1,16 +1,42 @@
-"""Anthropic Messages response parser (M3).
+"""Anthropic Messages response parser (M3 + stop_reason plumbing, M4).
 
-Extracts plain text from a provider response. Response protection
-(scanning, token leakage detection, restoration) is milestone M4 —
-this module only parses. Fail closed: anything malformed raises
-ResponseParseError, and the payload is never retained.
+Extracts plain text and the ``stop_reason`` from a provider response.
+Response protection (scanning, token leakage detection, restoration)
+is milestone M4 — this module only parses. Fail closed: anything
+malformed raises ResponseParseError, and the payload is never retained.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Any
 
 from secure_ai_gateway.errors import ResponseParseError
+
+
+@dataclass(frozen=True, slots=True)
+class ParsedResponse:
+    """Parsed provider response: text plus completion metadata.
+
+    ``stop_reason`` is used by the M4 response guard (``max_tokens``
+    truncation is a violation by decision). ``text`` is repr-hidden.
+    """
+
+    text: str = field(repr=False)
+    stop_reason: str | None = None
+
+
+def parse_response(payload: dict[str, Any]) -> ParsedResponse:
+    """Parse a response payload into text + stop_reason (fail closed).
+
+    Reuses every check in ``parse_response_text``; a malformed
+    ``stop_reason`` (present but not a string) is also a parse error.
+    """
+    text = parse_response_text(payload)
+    stop_reason = payload.get("stop_reason")
+    if stop_reason is not None and not isinstance(stop_reason, str):
+        raise ResponseParseError("stop_reason must be a string")
+    return ParsedResponse(text=text, stop_reason=stop_reason)
 
 
 def parse_response_text(payload: dict[str, Any]) -> str:

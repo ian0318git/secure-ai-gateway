@@ -14,6 +14,7 @@ import pytest
 
 from secure_ai_gateway.errors import ProviderHTTPError, ResponseParseError
 from secure_ai_gateway.llm.request_builder import LLMRequest
+from secure_ai_gateway.llm.response_parser import ParsedResponse
 from secure_ai_gateway.models import (
     CellDetection,
     DetectionSpan,
@@ -78,11 +79,11 @@ class FakeProvider:
         self.requests: list[LLMRequest] = []
         self.raise_exc: Exception | None = None
 
-    def complete(self, request: LLMRequest) -> str:
+    def complete(self, request: LLMRequest) -> ParsedResponse:
         self.requests.append(request)
         if self.raise_exc is not None:
             raise self.raise_exc
-        return self._text
+        return ParsedResponse(text=self._text, stop_reason="end_turn")
 
 
 @pytest.fixture

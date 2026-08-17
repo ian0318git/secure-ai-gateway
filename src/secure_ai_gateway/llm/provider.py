@@ -26,7 +26,10 @@ from secure_ai_gateway.errors import (
     ResponseParseError,
 )
 from secure_ai_gateway.llm.request_builder import LLMRequest
-from secure_ai_gateway.llm.response_parser import parse_response_text
+from secure_ai_gateway.llm.response_parser import (
+    ParsedResponse,
+    parse_response,
+)
 
 API_ENDPOINT = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_VERSION = "2023-06-01"
@@ -104,8 +107,8 @@ class UrllibTransport:
 class LLMProvider(Protocol):
     """External LLM behind the gateway boundary (DESIGN §16)."""
 
-    def complete(self, request: LLMRequest) -> str:
-        """Send the protected request, return the response text."""
+    def complete(self, request: LLMRequest) -> ParsedResponse:
+        """Send the protected request, return the parsed response."""
         ...
 
 
@@ -137,7 +140,7 @@ class AnthropicProvider:
             transport if transport is not None else UrllibTransport()
         )
 
-    def complete(self, request: LLMRequest) -> str:
+    def complete(self, request: LLMRequest) -> ParsedResponse:
         headers = {
             "x-api-key": self._api_key,
             "anthropic-version": ANTHROPIC_VERSION,
@@ -149,4 +152,4 @@ class AnthropicProvider:
             request.to_body(),
             timeout=self._timeout,
         )
-        return parse_response_text(payload)
+        return parse_response(payload)

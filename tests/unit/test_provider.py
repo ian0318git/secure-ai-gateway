@@ -88,7 +88,9 @@ class TestProviderCall:
     def test_endpoint_and_headers(self) -> None:
         transport = FakeTransport(_OK_PAYLOAD)
         provider = AnthropicProvider(transport, api_key="sk-test")
-        assert provider.complete(_request()) == "34.2%"
+        parsed = provider.complete(_request())
+        assert parsed.text == "34.2%"
+        assert parsed.stop_reason is None  # payload carries none
         (endpoint, headers, _, _) = transport.calls[0]
         assert endpoint == "https://api.anthropic.com/v1/messages"
         assert headers["x-api-key"] == "sk-test"

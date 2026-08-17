@@ -95,14 +95,16 @@ class Session:
                 model=request.model,
                 doc_cells=len(request.document),
             )
-            text = self._provider.complete(request)
+            parsed = self._provider.complete(request)
             log_event(
                 logger,
                 "provider_ok",
                 request_id=rid,
-                response_chars=len(text),
+                response_chars=len(parsed.text),
             )
-            return SessionResult(rid, decision, report, response_text=text)
+            return SessionResult(
+                rid, decision, report, response_text=parsed.text
+            )
         except Exception as exc:  # noqa: BLE001 — fail closed
             reason = f"error:{type(exc).__name__}"
             log_event(

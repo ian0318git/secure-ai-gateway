@@ -53,3 +53,51 @@ class InstructionSecretError(GatewayError):
     def __init__(self, entity_type: EntityType) -> None:
         self.entity_type = entity_type
         super().__init__(f"secret-class entity in instruction: {entity_type.value}")
+
+
+class ProviderError(GatewayError):
+    """Base for all LLM provider failures (M3).
+
+    Messages are static; a provider error body is NEVER part of an
+    exception (DESIGN §18 — error bodies may echo the request payload).
+    """
+
+
+class ProviderConfigurationError(ProviderError):
+    """The provider could not be constructed (e.g. missing API key).
+
+    Raised at construction time so the gateway fails closed before any
+    call is attempted (no silent fake fallback).
+    """
+
+
+class ProviderHTTPError(ProviderError):
+    """The provider returned a non-2xx HTTP status.
+
+    The response body is read once by the transport and discarded — it
+    may echo the request payload. The message is static.
+    """
+
+    def __init__(self, status_code: int) -> None:
+        self.status_code = status_code
+        super().__init__(f"provider returned HTTP {status_code}")
+
+
+class ProviderTimeoutError(ProviderError):
+    """The provider call exceeded its timeout."""
+
+
+class ProviderConnectionError(ProviderError):
+    """The provider could not be reached (DNS, refused, network)."""
+
+
+class ResponseParseError(GatewayError):
+    """The provider response could not be parsed.
+
+    Malformed, empty, or an error envelope. The exception never carries
+    response content.
+    """
+
+
+class RequestBuildError(GatewayError):
+    """The outbound request could not be built (e.g. nothing to send)."""

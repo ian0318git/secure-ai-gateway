@@ -94,20 +94,51 @@ def protect_instruction(
     return _substitute(instruction, spans, vault)
 
 
-def restore_text(text: str, vault: TokenVault) -> str:
-    """Restore every known token in ``text`` to its raw value.
+def restore_text_with_spans(
+    text: str, vault: TokenVault
+) -> tuple[str, tuple[tuple[int, int], ...]]:
+    """Restore every known token in ``text``, tracking its position.
 
-    Round-trip tests today; M3 response restoration. Unknown strings
-    pass through unchanged. Tokens are matched longest-first; token
+    Returns ``(restored, spans)`` where each span is ``(start, end)``
+    into the RETURNED text (output space — token length differs from
+    raw length, so input-space offsets would be wrong). The M4 response
+    guard uses the spans to tell authorised restored values from raw
+    values the model authored itself. Unknown strings pass through
+    unchanged and produce no span. ``re.sub`` cannot accumulate output
+    offsets, so the rebuild is a manual left-to-right pass; token
     substring disjointness is pinned by a property test
     (tests/unit/test_vault.py::TestTokenSubstringSafety).
     """
     tokens = vault.tokens()
     if not tokens:
-        return text
+        return text, ()
     ordered = sorted(tokens, key=len, reverse=True)
     pattern = re.compile("|".join(re.escape(t) for t in ordered))
-    return pattern.sub(lambda m: vault.restore(m.group(0)) or m.group(0), text)
+    out: list[str] = []
+    spans: list[tuple[int, int]] = []
+    pos = 0  # input position
+    out_pos = 0  # output position; restored spans live in this space
+    for m in pattern.finditer(text):
+        raw = vault.restore(m.group(0))
+        if raw is None:  # defensive: unknown strings pass through
+            continue
+        out.append(text[pos : m.start()])
+        out.append(raw)
+        start = out_pos + (m.start() - pos)
+        spans.append((start, start + len(raw)))
+        out_pos = start + len(raw)
+        pos = m.end()
+    out.append(text[pos:])
+    return "".join(out), tuple(spans)
+
+
+def restore_text(text: str, vault: TokenVault) -> str:
+    """Restore every known token in ``text`` to its raw value.
+
+    Round-trip tests today; M4 response restoration. Unknown strings
+    pass through unchanged.
+    """
+    return restore_text_with_spans(text, vault)[0]
 
 
 def _substitute(

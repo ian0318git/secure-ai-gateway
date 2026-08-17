@@ -12,6 +12,7 @@ responses, or client-visible surfaces).
 
 from __future__ import annotations
 
+import re
 import secrets
 from typing import Callable, Protocol
 
@@ -28,6 +29,13 @@ _RESERVED_TOKEN_PREFIXES = frozenset(
 
 _TOKEN_HEX_LENGTH = 8  # token_hex(4) -> 8 chars, 32 bits
 _MAX_TOKEN_ATTEMPTS = 100  # bounded collision retry, then fail closed
+
+# Shape of every issued token: uppercase-alnum prefix + 8 lowercase hex
+# (all prefixes in _PREFIX_BY_TYPE match). Used by the M4 response guard
+# to tell issued tokens from plain text. Deliberately NOT the reserved
+# 6-hex TOKEN_PATTERN namespace (T-T03): an invented 6-hex string like
+# CUSTOMER_4f8a21 falls through to the sensitive-data scan instead.
+TOKEN_RE = re.compile(r"[A-Z][A-Z0-9]*_[0-9a-f]{8}")
 
 
 class TokenFormatError(GatewayError):

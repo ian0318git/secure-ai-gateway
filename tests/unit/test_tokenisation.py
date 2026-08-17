@@ -25,6 +25,7 @@ from secure_ai_gateway.tokenisation.substitution import (
     _INSTRUCTION_BLOCK_TYPES,
     protect_instruction,
     restore_text,
+    restore_text_with_spans,
     tokenise_cells,
 )
 from secure_ai_gateway.tokenisation.vault import SessionTokenVault
@@ -342,3 +343,68 @@ class TestProtectInstruction:
         from secure_ai_gateway.policy.engine import _BLOCK_TYPES
 
         assert _INSTRUCTION_BLOCK_TYPES == _BLOCK_TYPES
+
+
+
+
+
+class TestRestoreTextWithSpans:
+    """M4 restore with position tracking (spans in OUTPUT space)."""
+
+    def test_spans_in_output_space_longer_raw(self) -> None:
+        vault = SessionTokenVault()
+        t = vault.token_for(EntityType.PERSON, "王小明")
+        restored, spans = restore_text_with_spans(f"客戶{t}的報告", vault)
+        # The raw (3 chars) is much shorter than the token (~14 chars):
+        # the span must sit at the OUTPUT position, not the input one.
+        assert restored.startswith("客戶") and restored.endswith("的報告")
+        assert spans == ((2, 5),)  # "王小明" occupies (2, 5) in output space
+        assert restored[2:5] == "王小明"
+
+    def test_spans_in_output_space_shorter_raw(self) -> None:
+        vault = SessionTokenVault()
+        t = vault.token_for(EntityType.PERSON, "王小明")
+        text = f"開頭{t}結尾"
+        restored, spans = restore_text_with_spans(text, vault)
+        assert spans == ((2, 5),)
+        assert restored == "開頭王小明結尾"
+
+    def test_unknown_token_like_string_no_span(self) -> None:
+        vault = SessionTokenVault()
+        vault.token_for(EntityType.PERSON, "王小明")
+        restored, spans = restore_text_with_spans("CUSTOMER_deadbeef 未知", vault)
+        assert restored == "CUSTOMER_deadbeef 未知"
+        assert spans == ()
+
+    def test_unknown_passthrough_between_known(self) -> None:
+        vault = SessionTokenVault()
+        t = vault.token_for(EntityType.PERSON, "王小明")
+        restored, spans = restore_text_with_spans(
+            f"{t} PERSON_ffffffff {t}", vault
+        )
+        # The foreign token-string is NOT a known token: passes through,
+        # and contributes no span; both occurrences of the known token
+        # restore and each produce their own span.
+        assert restored == "王小明 PERSON_ffffffff 王小明"
+        second = restored.index("王小明", 5)
+        assert spans == ((0, 3), (second, second + 3))
+
+    def test_multiple_tokens_consecutive_spans(self) -> None:
+        vault = SessionTokenVault()
+        t1 = vault.token_for(EntityType.PERSON, "王小明")
+        t2 = vault.token_for(EntityType.EMAIL, "bob@x.com")
+        restored, spans = restore_text_with_spans(f"{t1}{t2}", vault)
+        assert restored == "王小明bob@x.com"
+        assert spans == ((0, 3), (3, 12))
+
+    def test_wrapper_equals_restore_text(self) -> None:
+        vault = SessionTokenVault()
+        t = vault.token_for(EntityType.PERSON, "王小明")
+        text = f"客戶{t}的報告"
+        assert restore_text(text, vault) == restore_text_with_spans(text, vault)[0]
+
+    def test_empty_text_and_vault(self) -> None:
+        assert restore_text_with_spans("", SessionTokenVault()) == ("", ())
+        vault = SessionTokenVault()
+        vault.token_for(EntityType.PERSON, "王小明")
+        assert restore_text_with_spans("無 token", vault) == ("無 token", ())

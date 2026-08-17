@@ -8,9 +8,11 @@ value or raw value ever leaves through logs or report surfaces.
 from secure_ai_gateway.tokenisation.substitution import (
     protect_instruction,
     restore_text,
+    restore_text_with_spans,
     tokenise_cells,
 )
 from secure_ai_gateway.tokenisation.vault import (
+    TOKEN_RE,
     SessionTokenVault,
     TokenCollisionError,
     TokenFormatError,
@@ -19,12 +21,14 @@ from secure_ai_gateway.tokenisation.vault import (
 )
 
 __all__ = [
+    "TOKEN_RE",
     "SessionTokenVault",
     "TokenCollisionError",
     "TokenFormatError",
     "TokenVault",
     "protect_instruction",
     "restore_text",
+    "restore_text_with_spans",
     "token_prefix",
     "tokenise_cells",
 ]

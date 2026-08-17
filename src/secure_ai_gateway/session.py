@@ -1,14 +1,15 @@
-"""M3 session orchestrator: one pipeline call + one provider call.
+"""M4 session orchestrator: one pipeline call + one provider call.
 
 One ``Session.run`` is one gateway session (SR-019): the pipeline
 produces protected cells and a session vault, the request builder
-merges them, the provider is called, and the response text is parsed.
+merges them, the provider is called, the response is parsed, and the
+response guard validates + restores it (DESIGN §17, SR-008/021).
 The session OWNS the vault and clears it on every path (success,
 BLOCK, failure) — mappings are destroyed at session end.
 
-Response protection (scanning, token leakage detection, restoration)
-is milestone M4 and will slot in between "response parsed" and "vault
-cleared".
+Response violations fail closed: the whole response is blocked
+(``SessionResult.decision`` becomes a BLOCK with a machine-readable
+``response:<category>`` reason) and nothing is delivered.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from secure_ai_gateway.models import Disposition, PolicyDecision
 from secure_ai_gateway.pipeline import Pipeline
 from secure_ai_gateway.policy.templates import resolve_template
 from secure_ai_gateway.reporting import MetadataReport
+from secure_ai_gateway.response.guard import ResponseGuard
 
 logger = logging.getLogger("secure_ai_gateway.session")
 
@@ -34,7 +36,7 @@ class SessionResult:
     request_id: str
     decision: PolicyDecision
     report: MetadataReport
-    response_text: str = field(default="", repr=False)  # M4 scans this
+    response_text: str = field(default="", repr=False)  # validated+restored
 
     @property
     def delivered(self) -> bool:
@@ -51,6 +53,9 @@ class Session:
     ) -> None:
         self._pipeline = pipeline
         self._provider = provider
+        # Eager: a pipeline without an engine fails here, at
+        # construction (fail closed), before any session can run.
+        self._guard = ResponseGuard(pipeline.engine)
 
     def run(
         self,
@@ -102,8 +107,30 @@ class Session:
                 request_id=rid,
                 response_chars=len(parsed.text),
             )
+            # M4: scan + restore inside the trusted environment, before
+            # the vault is cleared (SR-019). Violations fail closed.
+            outcome = self._guard.check(
+                parsed.text, vault, parsed.stop_reason
+            )
+            if outcome.status == "blocked":
+                log_event(
+                    logger,
+                    "response_blocked",
+                    level=logging.ERROR,
+                    request_id=rid,
+                    reason=outcome.reason,
+                    response_chars=len(parsed.text),
+                )
+                return SessionResult(
+                    rid,
+                    PolicyDecision(
+                        disposition=Disposition.BLOCK,
+                        reason=outcome.reason,
+                    ),
+                    report,
+                )
             return SessionResult(
-                rid, decision, report, response_text=parsed.text
+                rid, decision, report, response_text=outcome.text
             )
         except Exception as exc:  # noqa: BLE001 — fail closed
             reason = f"error:{type(exc).__name__}"

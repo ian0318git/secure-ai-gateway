@@ -1,16 +1,18 @@
-"""Interactive demo CLI (M3).
+"""Interactive demo CLI (M4).
 
 ``python -m secure_ai_gateway.cli --file data.csv --instruction "..."``
 
 Runs one full gateway session: parse -> detect -> policy -> minimise
--> tokenise -> provider call -> response.
+-> tokenise -> provider call -> response guard (DESIGN §17).
 
 ``--provider fake`` runs an offline demo (no network, no API key):
-the fake echoes the exact protected message that would be sent to the
-provider.
+the fake "responds" with the protected message minus its framing
+markers, so the demo exercises the real scan + restore path — tokens
+are restored where authorised, violations are blocked.
 
-The response is printed as-is; it is NOT response-scanned (response
-protection is milestone M4).
+The response is validated and restored by the M4 response guard; a
+violation fails closed and the CLI prints the machine-readable
+``response:<category>`` reason.
 """
 
 from __future__ import annotations
@@ -21,7 +23,11 @@ import sys
 from secure_ai_gateway.detection.engine import DetectionEngine
 from secure_ai_gateway.errors import ProviderConfigurationError
 from secure_ai_gateway.llm.provider import AnthropicProvider
-from secure_ai_gateway.llm.request_builder import LLMRequest
+from secure_ai_gateway.llm.request_builder import (
+    DOCUMENT_MARKER,
+    INSTRUCTION_MARKER,
+    LLMRequest,
+)
 from secure_ai_gateway.llm.response_parser import ParsedResponse
 from secure_ai_gateway.pipeline import Pipeline
 from secure_ai_gateway.session import Session
@@ -29,12 +35,23 @@ from secure_ai_gateway.session import Session
 
 class EchoProvider:
     """Offline demo provider: returns the protected message exactly as
-    it would be sent to the provider. No network, no API key."""
+    it would be sent to the provider, minus the framing marker lines.
+    No network, no API key.
+
+    A real provider never echoes the prompt structure back, so the
+    demo strips the marker lines here — the response then goes through
+    the full M4 scan + restore path like any other response.
+    """
 
     def complete(self, request: LLMRequest) -> ParsedResponse:
         content = request.to_body()["messages"][0]["content"]
         assert isinstance(content, str)
-        return ParsedResponse(text=content, stop_reason="end_turn")
+        lines = [
+            line
+            for line in content.splitlines()
+            if line.strip() not in (INSTRUCTION_MARKER, DOCUMENT_MARKER)
+        ]
+        return ParsedResponse(text="\n".join(lines), stop_reason="end_turn")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -92,7 +109,6 @@ def main(argv: list[str] | None = None) -> int:
     if result.delivered:
         print("\n--- LLM response ---")
         print(result.response_text)
-        print("--- response not scanned (M4) ---")
         return 0
     print(f"blocked: {result.decision.reason}")
     return 1

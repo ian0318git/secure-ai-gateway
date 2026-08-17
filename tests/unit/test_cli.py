@@ -84,9 +84,10 @@ class TestMain:
         assert code == 0
         assert "offline demo" in out
         assert "DELIVERED" in out
-        assert "PERSON_" in out  # the echoed protected message
-        assert "王小明" not in out
+        assert "PERSON_" not in out  # tokens restored, not echoed
+        assert "王小明" in out  # authorised restoration, M4 scan+restore
         assert "請分析" in out  # clean instruction passes through
+        assert "not scanned" not in out  # M4 note removed
 
     def test_blocked_input_exit_1(self, monkeypatch, tmp_path, capsys) -> None:
         f = tmp_path / "s.csv"

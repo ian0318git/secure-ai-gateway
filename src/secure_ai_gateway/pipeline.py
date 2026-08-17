@@ -61,6 +61,11 @@ class Pipeline:
         self._engine = engine
         self._limits = limits if limits is not None else ResourceLimits()
 
+    @property
+    def engine(self) -> DetectionEngine:
+        """The detection engine (M4: response scanning reuses it)."""
+        return self._engine
+
     def process_file(
         self,
         path: str | Path,

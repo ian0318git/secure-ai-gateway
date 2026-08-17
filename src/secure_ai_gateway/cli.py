@@ -20,14 +20,24 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 from secure_ai_gateway.detection.engine import DetectionEngine
-from secure_ai_gateway.errors import ProviderConfigurationError
+from secure_ai_gateway.errors import (
+    ProviderConfigurationError,
+    VaultKeyError,
+    VaultStoreError,
+)
 from secure_ai_gateway.llm.provider import AnthropicProvider
 from secure_ai_gateway.llm.request_builder import LLMRequest
 from secure_ai_gateway.llm.response_parser import ParsedResponse
 from secure_ai_gateway.pipeline import Pipeline
 from secure_ai_gateway.session import Session
+from secure_ai_gateway.tokenisation.persistent import (
+    PersistentSessionVault,
+    PersistentTokenStore,
+    load_master_key,
+)
 
 
 class EchoProvider:
@@ -70,12 +80,35 @@ def build_parser() -> argparse.ArgumentParser:
             "fake = offline demo, echoes the protected message"
         ),
     )
+    parser.add_argument(
+        "--vault-store",
+        metavar="PATH",
+        default=None,
+        help=(
+            "M6 opt-in: persistent encrypted token store — reuse token "
+            "identities across runs. Requires VAULT_MASTER_KEY (base64 "
+            "of 32 random bytes). Default: session-only vault (PoC "
+            "behaviour)"
+        ),
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    pipeline = Pipeline(DetectionEngine())
+    vault_factory = None
+    if args.vault_store:
+        # Fail closed before any session: missing/invalid key and
+        # unloadable stores exit 2, mirroring ProviderConfigurationError.
+        try:
+            key = load_master_key()
+            store = PersistentTokenStore(Path(args.vault_store), key)
+        except (VaultKeyError, VaultStoreError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        print(f"vault store: {args.vault_store} — {len(store)} entries")
+        vault_factory = lambda: PersistentSessionVault(store=store)
+    pipeline = Pipeline(DetectionEngine(), vault_factory=vault_factory)
     if args.provider == "fake":
         print("offline demo: --provider fake, no provider called")
         provider = EchoProvider()

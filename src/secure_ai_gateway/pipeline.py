@@ -19,6 +19,7 @@ from __future__ import annotations
 import logging
 import uuid
 from pathlib import Path
+from typing import Callable
 
 from secure_ai_gateway.detection.engine import DetectionEngine
 from secure_ai_gateway.errors import GatewayError, InstructionSecretError
@@ -57,9 +58,14 @@ class Pipeline:
         self,
         engine: DetectionEngine,
         limits: ResourceLimits | None = None,
+        *,
+        vault_factory: Callable[[], SessionTokenVault] | None = None,
     ) -> None:
         self._engine = engine
         self._limits = limits if limits is not None else ResourceLimits()
+        # M6 opt-in: a PersistentSessionVault factory (CLI --vault-store).
+        # Keyword-only so every positional call site is unchanged.
+        self._vault_factory = vault_factory
 
     @property
     def engine(self) -> DetectionEngine:
@@ -80,7 +86,14 @@ class Pipeline:
         vault and releases it at session end; on BLOCK it is empty.
         """
         rid = request_id or uuid.uuid4().hex[:12]
-        vault = SessionTokenVault()
+        # Resolved lazily so the M5 token-collision test's monkeypatch
+        # of pipeline.SessionTokenVault (test_m5_fail_closed.py) keeps
+        # working; the M6 factory path is strictly opt-in (--vault-store).
+        vault = (
+            self._vault_factory()
+            if self._vault_factory is not None
+            else SessionTokenVault()
+        )
         try:
             parsed = parse_document(path, self._limits)
             log_event(

@@ -101,3 +101,21 @@ class ResponseParseError(GatewayError):
 
 class RequestBuildError(GatewayError):
     """The outbound request could not be built (e.g. nothing to send)."""
+
+
+class VaultKeyError(GatewayError):
+    """VAULT_MASTER_KEY missing or invalid (M6, SR-026).
+
+    Raised before any session starts so the gateway fails closed —
+    never a silent fallback to a session-only vault when persistence
+    was requested.
+    """
+
+
+class VaultStoreError(GatewayError):
+    """Persistent token store cannot be loaded or written (M6, SR-026).
+
+    Tampered/truncated ciphertext, wrong key, wrong version, wrong
+    shape, or an I/O failure — fail closed, never a silent reset or a
+    partial load. Messages are static and never carry mappings.
+    """

@@ -25,3 +25,10 @@ tmp/
 *.log
 bench_reports/
 bench_cache/
+
+# M6 persistent token stores (SR-026: mappings never committed)
+*.vault
+*.vault.tmp
+
+# Claude Code local session state
+.claude/

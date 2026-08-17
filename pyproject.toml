@@ -33,6 +33,10 @@ dependencies = [
     "pandas>=2.2,<3",
     "openpyxl>=3.1.2,<3.2",
     "defusedxml==0.7.1",
+    # M6: Fernet authenticated encryption for the opt-in persistent
+    # token store (DESIGN §11.1, SR-026). Wheels only — no build tools
+    # on this machine (see the spacy note above).
+    "cryptography>=42,<46",
 ]
 
 [project.optional-dependencies]

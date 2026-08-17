@@ -32,7 +32,12 @@ Reverse-chronological.
   and s.end <= r_end`). An overlap rule would leak the second value
   of a merged span (`王小明、李大同`); containment blocks it.
   Adjacent restored values merged by NER cause a conservative
-  false-positive block — acceptable, fail closed.
+  false-positive block — acceptable, fail closed. Verified against
+  the real spaCy engine: on prose, NER spans align with the restored
+  value and deliver; on JSON-structured text (the old demo echo) NER
+  merges entities with quotes/column names and the guard correctly
+  blocks — a demo-side artifact, fixed by making the fake provider
+  answer in prose (as a real provider does).
 - **Leak-vs-restored soundness**: the only authorised path for a raw
   value to re-enter the response is "exists as a token string →
   restored → inside a restored span". A vault-known value leaked as
@@ -62,10 +67,11 @@ Reverse-chronological.
   `request_id` / `reason` / `response_chars` — no key carries token,
   text, or payload substrings (SR-009); raw response content never
   logged, never in the report.
-- **CLI demo**: `--provider fake` echoes the protected message minus
-  the framing markers (a real provider never echoes prompt structure)
-  so the offline demo exercises the real scan + restore path; the
-  "not scanned (M4)" note is gone.
+- **CLI demo**: `--provider fake` answers with a canned prose
+  analysis that references each protected value through its token
+  (a real provider returns prose, never prompt structure), so the
+  offline demo exercises the real scan + restore path with the real
+  engine; the "not scanned (M4)" note is gone.
 
 ## 2026-08-17 — M3 LLM Integration Decisions
 

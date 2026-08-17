@@ -9,12 +9,15 @@ from __future__ import annotations
 import pytest
 
 from secure_ai_gateway import cli
+from secure_ai_gateway.llm.request_builder import build_request
 from secure_ai_gateway.models import (
     CellDetection,
     DetectionSpan,
+    DocumentCell,
     EntityType,
     SpanSource,
 )
+from secure_ai_gateway.policy.templates import resolve_template
 
 
 class StubEngine:
@@ -63,6 +66,27 @@ class TestParser:
         parser = cli.build_parser()
         with pytest.raises(SystemExit):
             parser.parse_args(["--file", "x.csv", "--provider", "gpt"])
+
+
+class TestEchoProvider:
+    def test_returns_prose_with_token_references(self) -> None:
+        # The fake provider answers in prose, referencing protected
+        # values through their tokens — echoing the protected JSON back
+        # would send the real NER haywire (quotes/column names merge
+        # with entities) and always trip the M4 guard.
+        cells = (DocumentCell("r1_c0", "客戶", "PERSON_a1b2c3d4", 1),)
+        req = build_request(
+            protected_cells=cells,
+            protected_instruction="請分析",
+            template=resolve_template("gross_margin"),
+        )
+        parsed = cli.EchoProvider().complete(req)
+        assert (
+            parsed.text
+            == "關於「請分析」的初步分析：\n"
+            "客戶 的數值為 PERSON_a1b2c3d4，已納入分析。"
+        )
+        assert "<<<" not in parsed.text  # no prompt framing in the reply
 
 
 class TestMain:

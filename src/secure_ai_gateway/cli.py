@@ -6,9 +6,10 @@ Runs one full gateway session: parse -> detect -> policy -> minimise
 -> tokenise -> provider call -> response guard (DESIGN §17).
 
 ``--provider fake`` runs an offline demo (no network, no API key):
-the fake "responds" with the protected message minus its framing
-markers, so the demo exercises the real scan + restore path — tokens
-are restored where authorised, violations are blocked.
+the fake answers with a canned analysis referencing the protected
+values through their tokens, so the demo exercises the real scan +
+restore path — tokens are restored where authorised, violations are
+blocked.
 
 The response is validated and restored by the M4 response guard; a
 violation fails closed and the CLI prints the machine-readable
@@ -23,34 +24,30 @@ import sys
 from secure_ai_gateway.detection.engine import DetectionEngine
 from secure_ai_gateway.errors import ProviderConfigurationError
 from secure_ai_gateway.llm.provider import AnthropicProvider
-from secure_ai_gateway.llm.request_builder import (
-    DOCUMENT_MARKER,
-    INSTRUCTION_MARKER,
-    LLMRequest,
-)
+from secure_ai_gateway.llm.request_builder import LLMRequest
 from secure_ai_gateway.llm.response_parser import ParsedResponse
 from secure_ai_gateway.pipeline import Pipeline
 from secure_ai_gateway.session import Session
 
 
 class EchoProvider:
-    """Offline demo provider: returns the protected message exactly as
-    it would be sent to the provider, minus the framing marker lines.
+    """Offline demo provider: answers with a canned natural-language
+    analysis that references each protected value through its token.
     No network, no API key.
 
-    A real provider never echoes the prompt structure back, so the
-    demo strips the marker lines here — the response then goes through
-    the full M4 scan + restore path like any other response.
+    A real provider returns prose, not the prompt structure — echoing
+    the protected JSON back would send NER haywire (quotes and column
+    names merge with entities). The canned analysis therefore walks
+    the same M4 scan + restore path a real response does: tokens are
+    restored where authorised, violations are blocked.
     """
 
     def complete(self, request: LLMRequest) -> ParsedResponse:
-        content = request.to_body()["messages"][0]["content"]
-        assert isinstance(content, str)
-        lines = [
-            line
-            for line in content.splitlines()
-            if line.strip() not in (INSTRUCTION_MARKER, DOCUMENT_MARKER)
-        ]
+        lines: list[str] = []
+        if request.instruction:
+            lines.append(f"關於「{request.instruction}」的初步分析：")
+        for cell in sorted(request.document, key=lambda c: (c.row, c.cell_id)):
+            lines.append(f"{cell.column} 的數值為 {cell.value}，已納入分析。")
         return ParsedResponse(text="\n".join(lines), stop_reason="end_turn")
 
 

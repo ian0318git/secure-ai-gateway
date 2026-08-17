@@ -56,7 +56,7 @@ It does **not** replace enterprise governance:
 
 ## Status
 
-- Phase: **M4 — Response protection (implemented)**
+- Phase: **M5 — Security test suite (implemented)**
 - M0 design review: done (v0.3)
 - M1 detection: done — benchmark acceptance PASS (aggregate
   precision 0.8458 / recall 0.9738; see `docs/DECISIONS.md`)
@@ -70,8 +70,12 @@ It does **not** replace enterprise governance:
   marker-echo task-compliance check, controlled token restoration);
   violations fail closed with machine-readable `response:<category>`
   reasons; truncation (`stop_reason: max_tokens`) blocks
-- M5 (security test suite expansion) begins after M4 acceptance and
-  human approval (see `docs/POC_PLAN.md`)
+- M5 security test suite: done — all 20 POC_PLAN items map to
+  passing tests (`docs/TEST_TRACEABILITY.md`); response-side prompt
+  injection detection (mirror rule, `response:injection:<CAT>`);
+  exhaustive fail-closed sweep (22 failure paths, zero provider calls
+  before the boundary); SR-016 audit-event battery; benchmark
+  evidence re-checked normatively against the documented thresholds
 
 ## How it works
 

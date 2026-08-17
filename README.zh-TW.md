@@ -44,7 +44,7 @@
 
 ## 現況
 
-- 階段：**M4 — 回應保護（已實作）**
+- 階段：**M5 — 安全測試套件（已實作）**
 - M0 設計審查：完成（v0.3）
 - M1 偵測：完成 — benchmark acceptance PASS（aggregate precision 0.8458 /
   recall 0.9738；見 `docs/DECISIONS.md`）
@@ -54,8 +54,11 @@
 - M4 回應保護：完成 — 回應 guard（重用偵測引擎做敏感資料掃描、未知/幻覺 token
   偵測、marker echo 任務合規檢查、受控 token 還原）；違規以 `response:<category>`
   機器可讀 reason fail closed；截斷（`stop_reason: max_tokens`）一律阻擋
-- M5（安全測試套件擴充）在 M4 acceptance 與人工核准後才開始（見
-  `docs/POC_PLAN.md`）
+- M5 安全測試套件：完成 — 20 項 POC_PLAN item 全數對應 passing test
+  （`docs/TEST_TRACEABILITY.md`）；response 側 prompt injection 偵測
+  （mirror rule、`response:injection:<CAT>`）；窮舉 fail-closed sweep
+  （22 條失敗路徑、trust boundary 前零 provider calls）；SR-016 audit
+  event battery；benchmark 證據以規範門檻自動 re-check
 
 ## 運作方式
 

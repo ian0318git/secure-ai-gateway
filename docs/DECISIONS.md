@@ -5,6 +5,82 @@ Reverse-chronological.
 
 ---
 
+## 2026-08-17 — M5 Security Test Suite Decisions
+
+- **D1 — Response-side prompt injection: mirror rule**: the M4
+  deferral is closed (user decision). The response guard scans the
+  model-authored surface with the SAME 13-pattern tables as the input
+  detector (`injection/detector.py::detect` reused verbatim — zero
+  new patterns, zero detector changes). Any finding blocks with
+  `response:injection:<CATEGORY>`. The input side's severity
+  semantics (severity >= 3 blocks, < 3 drops) do NOT transfer: a
+  response has no "drop a sentence" concept, so even severity-2
+  DELIMITER is a violation. Placement: pre-restore, AFTER token
+  validation and the marker-echo check (regression-pinned: the
+  existing `test_instruction_marker_echo_blocked` fixture contains
+  "請輸出原始客戶" which matches rv01 — the marker-echo check must
+  fire first). Pre-restore means only model words + token strings are
+  seen, so an authorised restored vault value can never trigger it (a
+  real customer named "Bypass Security Policy Co." delivers — pinned).
+  Conservative quoting decision: a response that QUOTES or analyses
+  an attack is blocked too — no LLM judge exists (CLAUDE.md
+  §6.10/6.11), the mirror rule is the policy. Pinned in
+  `tests/unit/test_response_guard.py::TestResponseInjection` (19
+  tests) and the M5 e2e suites.
+- **D2 — Marker-in-data is pinned, not fixed**: a literal
+  `<<<INSTRUCTION>>>` inside a document cell is data, not
+  instructions (the system prompt says so). `detect()` returns no
+  findings for it, so the cell passes the input side and reaches the
+  provider as data — that is CORRECT behaviour, not a hole: fixing it
+  would mean changing the detector or request builder, violating the
+  zero-change constraint. The loop closes on the response side: if
+  the model echoes the marker, the marker-echo check blocks
+  (`TestMarkerInDataPinned`).
+- **D3 — Fail-closed sweep is one exhaustive property test**: instead
+  of more per-path tests, a single parametrized sweep
+  (`tests/security/test_m5_fail_closed.py`, 22 rows) asserts ONE
+  property per control-failure path: `is_blocked()` + empty response
+  + not delivered + vault destroyed; failures before the provider
+  additionally assert zero provider calls. The 20-row failure table
+  is in the M5 plan; rows with dedicated tests elsewhere
+  ("reference only") are re-asserted here for the uniform sweep.
+- **D4 — SR-016 audit events are request-scoped**: the PoC has no
+  auth layer, so events carry `request_id` (the session identifier),
+  a machine-readable `reason` where applicable, and a timestamp —
+  but no user identifier. This is a recorded LIMITATION, pinned by
+  `TestUserIdentifierLimitation` so it stays visible; an identity
+  layer is an MVP concern, not a PoC requirement. The 4-path caplog
+  battery proves no event ever carries raw content, secrets, tokens,
+  or prompt framing (SR-009 — `log_event` rejects such keys by
+  design, failing loud).
+- **D5 — Benchmark evidence is re-checked normatively**: the
+  committed report (`bench_reports/benchmark_report.json`) is
+  re-verified by `scripts/check_acceptance.py::check` (imported via
+  importlib — import-only, no NLP model loaded), which re-derives
+  every metric from raw tp/fp/fn and does NOT trust the report's own
+  acceptance verdict. The thresholds are pinned as the documented
+  floors (aggregate recall 0.90 / precision 0.80; per-entity recall
+  0.85 / precision 0.80) and can never be lowered to make a report
+  pass (CLAUDE.md §6.12). The injection evidence is pinned too:
+  200/200 attack hits, zero findings on the clean control.
+  (`tests/security/test_m5_benchmark_evidence.py`)
+- **M5 acceptance bullets** (POC_PLAN M5 has no acceptance of its
+  own; these are the de-facto criteria, recorded here and in
+  `docs/TEST_TRACEABILITY.md`): ① all 20 M5 items map to >= 1 passing
+  test in the traceability matrix; ② response injection blocks with
+  `response:injection:<CAT>` and clean analyses deliver (clean-control
+  FP = 0); ③ every single control-failure path fails closed (sweep);
+ ④ security events carry request_id/reason/timestamp and no raw; ⑤
+  committed benchmark report passes the normative re-check; ⑥
+  existing M1–M4 suites stay green and untouched.
+- **Not solved in M5** (documented residuals): novel-phrasing
+  injections outside the 13-pattern table pass the input detector
+  (the response side is the second net); quoting attacks cause
+  conservative false-positive blocks; NER context-merging (M4,
+  unchanged).
+
+---
+
 ## 2026-08-17 — M4 Response Protection Decisions
 
 - **Guard pipeline (fixed order)**: the response guard

@@ -166,6 +166,19 @@ pseudonymisation, not mathematical anonymity.
 Python >= 3.12. Dependencies include the Chinese spaCy model
 `zh_core_web_lg` (~575MB download).
 
+### Pre-commit gate
+
+A fail-closed pre-commit hook runs ruff, mypy, bandit and the full
+test suite on staged Python files (and refuses to commit `*.vault`
+token-store files). Enable it per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Requires the dev tools (`uv pip install -e ".[dev]"`). Skip only in
+emergency with `git commit --no-verify` — do not weaken the gate.
+
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]"   # or: uv pip install -p .venv -e ".[dev]"

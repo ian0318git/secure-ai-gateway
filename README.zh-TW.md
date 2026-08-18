@@ -145,6 +145,19 @@ export VAULT_MASTER_KEY=$(.venv/bin/python -c \
 
 Python >= 3.12。依賴包含中文 spaCy 模型 `zh_core_web_lg`（約 575MB 下載）。
 
+### Pre-commit gate
+
+Fail-closed 的 pre-commit hook 會在 staged Python 檔案上跑
+ruff、mypy、bandit 與完整測試套件（並拒絕 commit `*.vault`
+token-store 檔）。每個 clone 需啟用一次：
+
+```bash
+git config core.hooksPath .githooks
+```
+
+需要 dev tools（`uv pip install -e ".[dev]"`）。僅在緊急時用
+`git commit --no-verify` 跳過 —— 不要為了方便弱化這個 gate。
+
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]"   # 或：uv pip install -p .venv -e ".[dev]"

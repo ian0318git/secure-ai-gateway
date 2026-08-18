@@ -14,7 +14,8 @@ from __future__ import annotations
 
 import re
 import secrets
-from typing import Callable, Protocol
+from collections.abc import Callable
+from typing import Protocol
 
 from secure_ai_gateway.errors import GatewayError
 from secure_ai_gateway.models import EntityType

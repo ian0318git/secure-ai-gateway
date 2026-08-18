@@ -9,14 +9,11 @@ raw values.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from secure_ai_gateway.models import (
-    CellDetection,
     DetectionResult,
-    Disposition,
-    EntityType,
     InjectionFinding,
     ParsedDocument,
     PolicyDecision,
@@ -80,10 +77,10 @@ class MetadataReport:
         lines = [
             f"# Detection Report — {self.request_id}",
             "",
-            f"- Source: `{self.source_name}` ({self.file_format}, "
-            f"{self.encoding})",
-            f"- Rows: {self.row_count}, Cells: {self.cell_count}, "
-            f"Est. tokens: {self.estimated_tokens}",
+            (f"- Source: `{self.source_name}` ({self.file_format}, "
+             f"{self.encoding})"),
+            (f"- Rows: {self.row_count}, Cells: {self.cell_count}, "
+             f"Est. tokens: {self.estimated_tokens}"),
             f"- Formula cells blocked: {self.neutralised_formula_cells}",
             "",
             "## Spans by entity type",
@@ -95,8 +92,8 @@ class MetadataReport:
             lines.append(f"| {entity} | {count} |")
         lines += [
             "",
-            f"## Policy decision: **{decision.disposition.value}** "
-            f"(`{decision.reason}`)",
+            (f"## Policy decision: **{decision.disposition.value}** "
+             f"(`{decision.reason}`)"),
             "",
             f"- Blocked cells: {len(decision.blocked_cell_ids)}",
             f"- Dropped cells: {len(decision.dropped_cell_ids)}",

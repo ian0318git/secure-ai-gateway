@@ -98,7 +98,7 @@ class FakeTransport:
 @pytest.fixture
 def pii_csv(tmp_path):
     f = tmp_path / "pii.csv"
-    f.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode("utf-8"))
+    f.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode())
     return f
 
 
@@ -129,7 +129,7 @@ class TestSecretsAbsent:
         self, tmp_path
     ) -> None:
         f = tmp_path / "s.csv"
-        f.write_bytes("客戶,收入\nsk-live-abc,8.4M\n".encode("utf-8"))
+        f.write_bytes("客戶,收入\nsk-live-abc,8.4M\n".encode())
         engine = StubEngine(
             {"r1_c0": (_span(EntityType.API_KEY, 0, 11, "sk-live-abc"),)}
         )
@@ -228,7 +228,7 @@ class TestInstructionChannel:
         self, tmp_path
     ) -> None:
         f = tmp_path / "x.csv"
-        f.write_bytes("客戶,收入\n王小明,8.4M\n".encode("utf-8"))
+        f.write_bytes("客戶,收入\n王小明,8.4M\n".encode())
         engine = StubEngine(
             {"r1_c0": (_span(EntityType.PERSON, 0, 3, "王小明"),)},
             instruction_spans=(_span(EntityType.PERSON, 3, 6, "王小明"),),

@@ -209,7 +209,7 @@ class TestCrossSessionSemantics:
             vault_factory=lambda: PersistentSessionVault(store=store),
         )
         csv = tmp_path / "p.csv"
-        csv.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode("utf-8"))
+        csv.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode())
         _result1 = pipe.process_file(csv, request_id="r1")
         _result2 = pipe.process_file(csv, request_id="r2")
         vault1, vault2 = _result1[3], _result2[3]
@@ -241,6 +241,7 @@ class TestRepoHygiene:
             cwd="/home/ian/github-project/secure-ai-gateway",
             capture_output=True,
             text=True,
+            check=False,  # exit code asserted below
         )
         assert out.returncode == 0
         assert "demo.vault" in out.stdout

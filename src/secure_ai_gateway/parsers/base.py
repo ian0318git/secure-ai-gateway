@@ -52,9 +52,10 @@ def neutralise_formula_prefix(value: str) -> tuple[str, bool]:
         head = value[0]
         if head in _ALWAYS_FORMULA:
             return "'" + value, True
-        if head in _CONDITIONAL_FORMULA:
-            if len(value) == 1 or value[1] not in _NUMBERISH:
-                return "'" + value, True
+        if head in _CONDITIONAL_FORMULA and (
+            len(value) == 1 or value[1] not in _NUMBERISH
+        ):
+            return "'" + value, True
     return value, neutralised
 
 

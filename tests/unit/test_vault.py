@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import re
 import secrets
-import string
 
 import pytest
 
@@ -15,12 +14,12 @@ from secure_ai_gateway.errors import GatewayError
 from secure_ai_gateway.models import EntityType
 from secure_ai_gateway.policy.engine import _TOKENISE_TYPES
 from secure_ai_gateway.tokenisation.vault import (
-    SessionTokenVault,
-    TokenCollisionError,
-    TokenFormatError,
     _MAX_TOKEN_ATTEMPTS,
     _RESERVED_TOKEN_PREFIXES,
     _TOKEN_HEX_LENGTH,
+    SessionTokenVault,
+    TokenCollisionError,
+    TokenFormatError,
     token_prefix,
 )
 

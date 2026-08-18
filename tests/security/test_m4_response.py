@@ -16,7 +16,6 @@ provider and parser are real (AnthropicProvider + parse_response).
 
 from __future__ import annotations
 
-import json
 import logging
 import re
 
@@ -155,7 +154,7 @@ class TokenEchoTransport:
 @pytest.fixture
 def pii_csv(tmp_path):
     f = tmp_path / "pii.csv"
-    f.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode("utf-8"))
+    f.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode())
     return f
 
 

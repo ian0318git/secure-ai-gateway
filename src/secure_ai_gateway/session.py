@@ -86,6 +86,12 @@ class Session:
             # The pipeline already BLOCKed on an unresolvable template,
             # so this lookup cannot be None here.
             template = resolve_template(template_name)
+            if template is None:
+                # Unreachable; fail closed instead of passing None
+                # (explicit raise, not assert — asserts vanish under -O).
+                raise RuntimeError(
+                    "unresolvable template reached session (fail closed)"
+                )
             request = build_request(
                 protected_cells=cells,
                 protected_instruction=vault.protected_instruction,

@@ -145,7 +145,7 @@ def assert_zh_only(engine: AnalyzerEngine) -> None:
             f"engine supports unexpected languages: {languages}"
         )
     non_zh = [
-        r.name
+        str(r.name)  # type: ignore[has-type]  # presidio attrs are untyped
         for r in engine.registry.recognizers
         if r.supported_language != "zh"
     ]
@@ -156,7 +156,10 @@ def assert_zh_only(engine: AnalyzerEngine) -> None:
     zh_recognizers = engine.registry.get_recognizers(
         language="zh", all_fields=True
     )
-    names = {r.name for r in zh_recognizers}
+    names = {
+        str(r.name)  # type: ignore[has-type]  # presidio attrs are untyped
+        for r in zh_recognizers
+    }
     if NER_RECOGNIZER_NAME not in names:
         raise RuntimeError(
             f"no {NER_RECOGNIZER_NAME} registered for zh: {sorted(names)}"

@@ -108,7 +108,7 @@ class FakeTransport:
 @pytest.fixture
 def pii_csv(tmp_path):
     f = tmp_path / "pii.csv"
-    f.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode("utf-8"))
+    f.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode())
     return f
 
 
@@ -183,7 +183,7 @@ class TestIndirectNarrative:
     def test_doc_cell_attack_blocks_before_provider(self, tmp_path, attack) -> None:
         f = tmp_path / "hostile.csv"
         f.write_bytes(
-            f"客戶,營業收入\n王小明,8.4M\n{attack},9.1M\n".encode("utf-8")
+            f"客戶,營業收入\n王小明,8.4M\n{attack},9.1M\n".encode()
         )
         engine = ResponseStubEngine(
             {"r1_c0": (_span(EntityType.PERSON, 0, 3, "王小明"),)}

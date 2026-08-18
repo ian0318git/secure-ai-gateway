@@ -3,4 +3,4 @@
 from secure_ai_gateway.policy.engine import evaluate
 from secure_ai_gateway.policy.templates import TASK_TEMPLATES, resolve_template
 
-__all__ = ["evaluate", "resolve_template", "TASK_TEMPLATES"]
+__all__ = ["TASK_TEMPLATES", "evaluate", "resolve_template"]

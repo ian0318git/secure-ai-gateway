@@ -44,7 +44,9 @@ class TestLogEvent:
     def test_forbidden_key_never_reaches_logger(
         self, logger: logging.Logger, caplog
     ) -> None:
-        with caplog.at_level(logging.INFO, logger="test.sanitised"):
-            with pytest.raises(ValueError):
-                log_event(logger, "parsed", payload="secret")
+        with (
+            caplog.at_level(logging.INFO, logger="test.sanitised"),
+            pytest.raises(ValueError),
+        ):
+            log_event(logger, "parsed", payload="secret")
         assert caplog.records == []

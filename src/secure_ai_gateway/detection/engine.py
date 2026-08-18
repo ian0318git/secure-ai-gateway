@@ -11,8 +11,10 @@ silently passing data through.
 
 from __future__ import annotations
 
-from typing import Mapping, Optional
+from collections.abc import Mapping
+from typing import cast
 
+from presidio_analyzer import EntityRecognizer
 from presidio_analyzer.recognizer_result import RecognizerResult
 
 from secure_ai_gateway.detection.context import boosted_spans
@@ -46,7 +48,7 @@ class DetectionEngine:
 
     def __init__(
         self,
-        thresholds: Optional[Mapping[EntityType, float]] = None,
+        thresholds: Mapping[EntityType, float] | None = None,
         boost: float = 0.2,
         cap: float = 0.95,
         analyzer=None,
@@ -135,7 +137,9 @@ class DetectionEngine:
         results = self._analyzer.analyze(
             text=text,
             language="zh",
-            ad_hoc_recognizers=self._recognizers,
+            # PatternRecognizer is an EntityRecognizer; presidio's
+            # parameter is invariant, so cast once at the boundary.
+            ad_hoc_recognizers=cast("list[EntityRecognizer]", self._recognizers),
             score_threshold=0.0,  # calibrated per-entity below
             # presidio 2.2.364 keeps overlapping spans of different
             # types by default; resolution happens below.

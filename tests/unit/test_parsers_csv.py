@@ -2,11 +2,6 @@
 
 from __future__ import annotations
 
-import io
-import struct
-import zipfile
-
-import openpyxl
 import pytest
 
 from secure_ai_gateway.errors import ParsingError, ResourceLimitError
@@ -16,7 +11,7 @@ from secure_ai_gateway.parsers.csv_parser import parse_csv_bytes
 
 class TestCsvParser:
     def test_basic_parse_with_headers(self) -> None:
-        data = "客戶,金額\n陳曉明,1000\n".encode("utf-8")
+        data = "客戶,金額\n陳曉明,1000\n".encode()
         doc = parse_csv_bytes(data, "t.csv", ResourceLimits())
         assert doc.stats.format == "csv"
         assert doc.stats.encoding == "utf_8"
@@ -35,25 +30,25 @@ class TestCsvParser:
         assert "陳曉明" in values
 
     def test_leading_zeros_preserved(self) -> None:
-        data = "id,name\n00123,abc\n".encode("utf-8")
+        data = b"id,name\n00123,abc\n"
         doc = parse_csv_bytes(data, "t.csv", ResourceLimits())
         assert [c.value for c in doc.cells if c.cell_id == "r1_c0"] == ["00123"]
 
     def test_quoted_newline_survives(self) -> None:
-        data = 'a,b\n"line1\nline2",x\n'.encode("utf-8")
+        data = b'a,b\n"line1\nline2",x\n'
         doc = parse_csv_bytes(data, "t.csv", ResourceLimits())
         values = [c.value for c in doc.cells]
         assert "line1 line2" in values  # newline neutralised to space
 
     def test_formula_cell_neutralised(self) -> None:
-        data = "a,b\n=SUM(A1),x\n".encode("utf-8")
+        data = b"a,b\n=SUM(A1),x\n"
         doc = parse_csv_bytes(data, "t.csv", ResourceLimits())
         values = [c.value for c in doc.cells]
         assert "'=SUM(A1)" in values
         assert doc.stats.neutralised_formula_cells == 1
 
     def test_na_string_not_treated_as_nan(self) -> None:
-        data = "a\nNA\n".encode("utf-8")
+        data = b"a\nNA\n"
         doc = parse_csv_bytes(data, "t.csv", ResourceLimits())
         assert [c.value for c in doc.cells if c.cell_id == "r1_c0"] == ["NA"]
 

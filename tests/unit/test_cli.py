@@ -51,7 +51,7 @@ def _stub_detection(monkeypatch, spans_by_cell) -> None:
 @pytest.fixture
 def pii_csv(tmp_path):
     f = tmp_path / "pii.csv"
-    f.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode("utf-8"))
+    f.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode())
     return f
 
 
@@ -115,7 +115,7 @@ class TestMain:
 
     def test_blocked_input_exit_1(self, monkeypatch, tmp_path, capsys) -> None:
         f = tmp_path / "s.csv"
-        f.write_bytes("客戶,收入\nsk-live-abc,8.4M\n".encode("utf-8"))
+        f.write_bytes("客戶,收入\nsk-live-abc,8.4M\n".encode())
         _stub_detection(
             monkeypatch,
             {"r1_c0": (_span(EntityType.API_KEY, 0, 11, "sk-live-abc"),)},

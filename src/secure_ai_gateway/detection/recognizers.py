@@ -146,8 +146,7 @@ _SURNAMES = (
 # person reference (prefixed fallback mode); the NER PERSON noise
 # filter (engine.py) drops spans equal to one of these.
 _PERSON_CONTEXT_WORDS = frozenset(
-    """客戶 供應商 聯絡人 付款人 負責人 申請人 簽約人 承辦人 經辦人
-    業務員 廠商 員工 戶名 甲方 乙方 帳上""".split()
+    ["客戶", "供應商", "聯絡人", "付款人", "負責人", "申請人", "簽約人", "承辦人", "經辦人", "業務員", "廠商", "員工", "戶名", "甲方", "乙方", "帳上"]
 )
 
 # Names are allowed to be followed by prose particles (之/於/的/是…)
@@ -179,13 +178,10 @@ _PERSON_EN_RE = re.compile(
 )
 
 _PERSON_EN_DENY_FIRST = frozenset(
-    """January February March April May June July August September
-    October November December Q1 Q2 Q3 Q4""".split()
+    ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December", "Q1", "Q2", "Q3", "Q4"]
 )
 _PERSON_EN_DENY_SECOND = frozenset(
-    """Sales Revenue Margin Growth Report Office Region Market Team
-    Year Quarter Rate Index Ratio Plan Budget Division Section
-    Department Summary Update Strategy""".split()
+    ["Sales", "Revenue", "Margin", "Growth", "Report", "Office", "Region", "Market", "Team", "Year", "Quarter", "Rate", "Index", "Ratio", "Plan", "Budget", "Division", "Section", "Department", "Summary", "Update", "Strategy"]
 )
 
 # Common words that start with a surname but are NOT names (FP control).
@@ -199,21 +195,7 @@ _PERSON_EN_DENY_SECOND = frozenset(
 # strings only — a 王國明 must not be denied because 王國 (kingdom)
 # is a word.
 _PERSON_DENY_WORDS = frozenset(
-    """陳列 陳述 陳情 陳年 陳舊 林業 林場 林木 黃昏 黃金 黃色 黃牛
-    王國 王子 王朝 王位 王后 李樹 周邊 周圍 周全 周年 週期 週末 週年
-    錢財 孫子 孫女 孫中山 趙雲 中國 中華 中間 中旬 中和 中繼 高級 高層
-    高峰 高點 高價 高風險 高科技 高等 高空 高山 高原 高速 高度 高端
-    高收益 高成長 高回報 和諧 和平 和氣 何在 何時 何處 何如 何謂
-    謝禮 韓愈 蘇州 蘇打 馬匹 馬車 馬達 馬力 馬上 馬年 猴子 熊市 熊掌
-    龍頭 龍舟 龍年 馮唐 董卓 董座 董事 彭祖 蔡司 余額 余下 傅雷 秦朝
-    唐朝 唐宋 宋詞 明清 清朝 民國 漢朝 漢語 漢字 魏晉 陸軍 陸地 大陸
-    范圍 範疇 石頭 石料 金錢 金庫 金額 金屬 金管會 銀兩 銀行 白銀 白紙
-    白條 白天 白云 方針 方向 方便 方法 方式 方位 東風 東方 東岸 南方
-    南北 南區 孟姜女 孔廟 孔子 湯圓 湯頭 康復 康德 安和 安全 安定
-    常識 平常 經常 簡報 簡易 簡稱 詹天佑 施政 施展 洪流 洪水 洪水猛獸
-    溫泉 溫度 溫暖 歐陽 文書 文章 文化 文書處理 章節 章魚 華盛頓 華人
-    華爾街 華航 費率 費用 費心 池水 池塘 湯水 嚴肅 嚴格 嚴重 嚴謹
-    柳樹 柳葉 花園 花卉 范仲淹 葉子 葉片 草率 黃昏後""".split()
+    ["陳列", "陳述", "陳情", "陳年", "陳舊", "林業", "林場", "林木", "黃昏", "黃金", "黃色", "黃牛", "王國", "王子", "王朝", "王位", "王后", "李樹", "周邊", "周圍", "周全", "周年", "週期", "週末", "週年", "錢財", "孫子", "孫女", "孫中山", "趙雲", "中國", "中華", "中間", "中旬", "中和", "中繼", "高級", "高層", "高峰", "高點", "高價", "高風險", "高科技", "高等", "高空", "高山", "高原", "高速", "高度", "高端", "高收益", "高成長", "高回報", "和諧", "和平", "和氣", "何在", "何時", "何處", "何如", "何謂", "謝禮", "韓愈", "蘇州", "蘇打", "馬匹", "馬車", "馬達", "馬力", "馬上", "馬年", "猴子", "熊市", "熊掌", "龍頭", "龍舟", "龍年", "馮唐", "董卓", "董座", "董事", "彭祖", "蔡司", "余額", "余下", "傅雷", "秦朝", "唐朝", "唐宋", "宋詞", "明清", "清朝", "民國", "漢朝", "漢語", "漢字", "魏晉", "陸軍", "陸地", "大陸", "范圍", "範疇", "石頭", "石料", "金錢", "金庫", "金額", "金屬", "金管會", "銀兩", "銀行", "白銀", "白紙", "白條", "白天", "白云", "方針", "方向", "方便", "方法", "方式", "方位", "東風", "東方", "東岸", "南方", "南北", "南區", "孟姜女", "孔廟", "孔子", "湯圓", "湯頭", "康復", "康德", "安和", "安全", "安定", "常識", "平常", "經常", "簡報", "簡易", "簡稱", "詹天佑", "施政", "施展", "洪流", "洪水", "洪水猛獸", "溫泉", "溫度", "溫暖", "歐陽", "文書", "文章", "文化", "文書處理", "章節", "章魚", "華盛頓", "華人", "華爾街", "華航", "費率", "費用", "費心", "池水", "池塘", "湯水", "嚴肅", "嚴格", "嚴重", "嚴謹", "柳樹", "柳葉", "花園", "花卉", "范仲淹", "葉子", "葉片", "草率", "黃昏後"]
 )
 
 # Prefix-match deny words (benchmark-measured, docs/DECISIONS.md):
@@ -224,12 +206,7 @@ _PERSON_DENY_WORDS = frozenset(
 # exact-match list would miss it. (王國/黃金/白雲 stay exact-match:
 # 王國X IS a real name shape.)
 _PERSON_DENY_PREFIX_WORDS = frozenset(
-    """金額 金庫 金錢 金管會 銀行 白銀 白紙 白條 白天 白云
-    毛利率 淨利率 收益率 匯率 利率 單價 毛利 萬元 金流量 現金流量
-    高雄港 高雄 台北 台中 台南 新北 桃園 基隆 花蓮 台東 苗栗 彰化
-    南投 雲林 屏東 澎湖 金門 連江
-    客戶 付款人 供應商 聯絡人 負責人 申請人 簽約人 承辦人 經辦人
-    業務員 戶名 廠商 員工""".split()
+    ["金額", "金庫", "金錢", "金管會", "銀行", "白銀", "白紙", "白條", "白天", "白云", "毛利率", "淨利率", "收益率", "匯率", "利率", "單價", "毛利", "萬元", "金流量", "現金流量", "高雄港", "高雄", "台北", "台中", "台南", "新北", "桃園", "基隆", "花蓮", "台東", "苗栗", "彰化", "南投", "雲林", "屏東", "澎湖", "金門", "連江", "客戶", "付款人", "供應商", "聯絡人", "負責人", "申請人", "簽約人", "承辦人", "經辦人", "業務員", "戶名", "廠商", "員工"]
 )
 
 # NER PERSON spans that are exactly a deny-listed or context word are
@@ -250,7 +227,7 @@ _TITLES = (
 # ---------------------------------------------------------------------------
 
 
-def _pattern(name: str, regex: "re.Pattern[str]", score: float) -> Pattern:
+def _pattern(name: str, regex: re.Pattern[str], score: float) -> Pattern:
     """presidio's Pattern requires the regex as a STRING (it re-compiles
     with its own flags via the ``regex`` module); unwrap compiled ones."""
     return Pattern(name, regex.pattern, score)
@@ -543,7 +520,7 @@ class PersonFallbackRecognizerZh(PatternRecognizer):
             if name.startswith(word):
                 name = name[len(word):]
                 break
-        if name.startswith("為") or name.startswith("是"):
+        if name.startswith(("為", "是")):
             name = name[1:]
         if " " in name:  # en mode: "Alice Miller"
             first, second = name.split(" ", 1)
@@ -551,9 +528,7 @@ class PersonFallbackRecognizerZh(PatternRecognizer):
                 return False
             if first in _PERSON_EN_DENY_FIRST:
                 return False
-            if second in _PERSON_EN_DENY_SECOND:
-                return False
-            return True
+            return second not in _PERSON_EN_DENY_SECOND
         if len(name) < 2 or len(name) > 3:
             return False
         if name in _PERSON_DENY_WORDS:
@@ -569,9 +544,7 @@ class PersonFallbackRecognizerZh(PatternRecognizer):
             return False
         if len(set(name)) == 1:  # "王王王" is not a name
             return False
-        if len(name) == 2 and name in _TITLES:
-            return False
-        return True
+        return not (len(name) == 2 and name in _TITLES)
 
 
 def build_pattern_recognizers() -> list[PatternRecognizer]:

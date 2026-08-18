@@ -9,12 +9,15 @@ self-heal).
 from __future__ import annotations
 
 import base64
-import os
 
 import pytest
 from cryptography.fernet import Fernet
 
-from secure_ai_gateway.errors import GatewayError, VaultKeyError, VaultStoreError
+from secure_ai_gateway.errors import (
+    GatewayError,
+    VaultKeyError,
+    VaultStoreError,
+)
 from secure_ai_gateway.models import EntityType
 from secure_ai_gateway.tokenisation.persistent import (
     PersistentSessionVault,

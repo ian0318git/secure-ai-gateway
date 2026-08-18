@@ -89,7 +89,7 @@ class FakeProvider:
 @pytest.fixture
 def pii_csv(tmp_path):
     f = tmp_path / "pii.csv"
-    f.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode("utf-8"))
+    f.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode())
     return f
 
 
@@ -119,7 +119,7 @@ class TestSessionFlow:
 
     def test_blocked_session_never_calls_provider(self, tmp_path) -> None:
         f = tmp_path / "s.csv"
-        f.write_bytes("客戶,收入\nsk-live-abc,8.4M\n".encode("utf-8"))
+        f.write_bytes("客戶,收入\nsk-live-abc,8.4M\n".encode())
         provider = FakeProvider()
         pipe = CapturingPipeline(
             StubEngine({"r1_c0": (_span(EntityType.API_KEY, 0, 11, "sk-live-abc"),)})

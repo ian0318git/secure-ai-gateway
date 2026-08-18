@@ -14,13 +14,14 @@ from __future__ import annotations
 import json
 import os
 import urllib.error
+import urllib.parse
 import urllib.request
-from typing import Mapping, Protocol
+from collections.abc import Mapping
+from typing import Protocol
 
 from secure_ai_gateway.errors import (
     ProviderConfigurationError,
     ProviderConnectionError,
-    ProviderError,
     ProviderHTTPError,
     ProviderTimeoutError,
     ResponseParseError,
@@ -75,12 +76,18 @@ class UrllibTransport:
         *,
         timeout: float | None = None,
     ) -> dict[str, object]:
+        # bandit B310: never open non-https endpoints (file:/, custom
+        # schemes); the LLM boundary must stay over TLS (SR-001).
+        if urllib.parse.urlsplit(endpoint).scheme != "https":
+            raise ProviderConfigurationError(
+                f"endpoint must be https, got: {endpoint!r}"
+            )
         data = json.dumps(body, ensure_ascii=False).encode("utf-8")
         req = urllib.request.Request(
             endpoint, data=data, headers=dict(headers), method="POST"
         )
         try:
-            with urllib.request.urlopen(
+            with urllib.request.urlopen(  # nosec B310
                 req, timeout=self._timeout if timeout is None else timeout
             ) as resp:
                 payload = json.loads(resp.read().decode("utf-8"))

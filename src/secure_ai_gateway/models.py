@@ -12,9 +12,9 @@ into the NFKC-normalised cell text (see docs/BENCHMARK.md §3).
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Iterator, Optional
 
 
 class EntityType(str, Enum):
@@ -33,12 +33,13 @@ class EntityType(str, Enum):
     API_KEY = "API_KEY"
     JWT = "JWT"
     PRIVATE_KEY = "PRIVATE_KEY"
-    PASSWORD = "PASSWORD"
-    SECRET = "SECRET"
+    # Entity type names, not secrets (bandit B105 false positives).
+    PASSWORD = "PASSWORD"  # nosec B105
+    SECRET = "SECRET"  # nosec B105
     BANK_ACCOUNT = "BANK_ACCOUNT"
     CUSTOMER_ID = "CUSTOMER_ID"
     EMPLOYEE_ID = "EMPLOYEE_ID"
-    TOKEN_PATTERN = "TOKEN_PATTERN"
+    TOKEN_PATTERN = "TOKEN_PATTERN"  # nosec B105
     # NER entities
     PERSON = "PERSON"
     ADDRESS = "ADDRESS"
@@ -75,7 +76,8 @@ class InjectionCategory(str, Enum):
     OVERRIDE_SYSTEM = "OVERRIDE_SYSTEM"  # "you are now ..." role swaps
     REVEAL = "REVEAL"  # "output the original customer names"
     DELIMITER = "DELIMITER"  # fake delimiters, "" > SYSTEM ...
-    TOKEN_PROBE = "TOKEN_PROBE"  # attempts to dump tokens/mappings
+    # Injection category name, not a token (bandit B105 false positive).
+    TOKEN_PROBE = "TOKEN_PROBE"  # nosec B105
     ROLE_HIJACK = "ROLE_HIJACK"  # pretend to be the system/admin
     POLICY_MANIP = "POLICY_MANIP"  # "bypass the policy", "no restrictions"
 
@@ -99,7 +101,7 @@ class DetectionSpan:
     score: float
     source: SpanSource
     raw_value: str = field(repr=False, compare=False)
-    checksum_valid: Optional[bool] = None  # TW_ID only: True/False/None
+    checksum_valid: bool | None = None  # TW_ID only: True/False/None
 
     def __post_init__(self) -> None:
         if self.start < 0 or self.end < self.start:

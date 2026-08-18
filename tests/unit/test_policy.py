@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from secure_ai_gateway.models import (
     DetectionResult,
     DetectionSpan,

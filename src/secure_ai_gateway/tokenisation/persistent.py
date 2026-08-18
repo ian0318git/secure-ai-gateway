@@ -24,8 +24,8 @@ import binascii
 import json
 import logging
 import os
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from cryptography.fernet import Fernet, InvalidToken
 

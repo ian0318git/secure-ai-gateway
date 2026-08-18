@@ -10,7 +10,7 @@ from __future__ import annotations
 import io
 import json
 import urllib.error
-from typing import Mapping
+from collections.abc import Mapping
 
 import pytest
 
@@ -134,6 +134,22 @@ class TestUrllibTransport:
             raise exc
 
         return fake
+
+    def test_non_https_endpoint_fails_closed(self, monkeypatch) -> None:
+        # bandit B310: urlopen must never see a non-https endpoint.
+        called = []
+
+        def fail(*a, **kw):
+            called.append(a)
+            raise AssertionError("urlopen must not be called")
+
+        self._fake_urlopen(monkeypatch, fail)
+        transport = UrllibTransport()
+        with pytest.raises(ProviderConfigurationError):
+            transport.request_json(
+                "file:///etc/passwd", {"x": "y"}, {"data": 1}
+            )
+        assert called == []  # urlopen never reached
 
     def test_http_error_maps_status_and_hides_body(self, monkeypatch) -> None:
         body = io.BytesIO(b'{"error":{"message":"echo sk-live-xyz"}}')

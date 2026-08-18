@@ -57,7 +57,7 @@ def _decrypt(path, key: bytes) -> dict:
 @pytest.fixture
 def pii_csv(tmp_path):
     f = tmp_path / "pii.csv"
-    f.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode("utf-8"))
+    f.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode())
     return f
 
 
@@ -190,7 +190,7 @@ class TestMain:
 
         # Now a BLOCK path: secret in the document -> no commits.
         secret_csv = pii_csv.with_name("secret.csv")
-        secret_csv.write_bytes("客戶,收入\nsk-live-abc,8.4M\n".encode("utf-8"))
+        secret_csv.write_bytes("客戶,收入\nsk-live-abc,8.4M\n".encode())
         _stub_detection(
             monkeypatch,
             {"r1_c0": (_span(EntityType.API_KEY, 0, 11, "sk-live-abc"),)},

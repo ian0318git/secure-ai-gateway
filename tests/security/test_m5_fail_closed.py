@@ -26,8 +26,8 @@ from pathlib import Path
 import pytest
 
 from secure_ai_gateway.errors import ProviderHTTPError
-from secure_ai_gateway.llm.provider import AnthropicProvider
 from secure_ai_gateway.limits import ResourceLimits
+from secure_ai_gateway.llm.provider import AnthropicProvider
 from secure_ai_gateway.models import (
     CellDetection,
     DetectionSpan,

@@ -22,7 +22,6 @@ from secure_ai_gateway.models import (
     CellDecision,
     DetectionResult,
     Disposition,
-    DocumentCell,
     EntityType,
     ParsedDocument,
     PolicyDecision,
@@ -108,7 +107,7 @@ def evaluate(
                 CellDecision(
                     cell.cell_id,
                     Disposition.BLOCK,
-                    f"unknown_type:{sorted(t.value for t in unknown_types)[0]}",
+                    f"unknown_type:{min(t.value for t in unknown_types)}",
                 )
             )
             continue
@@ -118,7 +117,7 @@ def evaluate(
                 CellDecision(
                     cell.cell_id,
                     Disposition.BLOCK,
-                    f"secret:{sorted(t.value for t in block_types)[0]}",
+                    f"secret:{min(t.value for t in block_types)}",
                 )
             )
             continue

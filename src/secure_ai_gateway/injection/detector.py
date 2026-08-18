@@ -30,7 +30,7 @@ class _Pattern:
     zh_substrings: tuple[str, ...] = ()
 
 
-_EN = lambda p: re.compile(p, re.IGNORECASE)  # noqa: E731
+_EN = lambda p: re.compile(p, re.IGNORECASE)
 
 _PATTERNS: tuple[_Pattern, ...] = (
     # --- OVERRIDE_DIRECT (severity 3) ---

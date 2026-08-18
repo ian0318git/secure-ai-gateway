@@ -28,7 +28,7 @@ from secure_ai_gateway.errors import (
     VaultKeyError,
     VaultStoreError,
 )
-from secure_ai_gateway.llm.provider import AnthropicProvider
+from secure_ai_gateway.llm.provider import AnthropicProvider, LLMProvider
 from secure_ai_gateway.llm.request_builder import LLMRequest
 from secure_ai_gateway.llm.response_parser import ParsedResponse
 from secure_ai_gateway.pipeline import Pipeline
@@ -109,6 +109,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"vault store: {args.vault_store} — {len(store)} entries")
         vault_factory = lambda: PersistentSessionVault(store=store)
     pipeline = Pipeline(DetectionEngine(), vault_factory=vault_factory)
+    provider: LLMProvider
     if args.provider == "fake":
         print("offline demo: --provider fake, no provider called")
         provider = EchoProvider()

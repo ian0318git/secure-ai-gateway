@@ -2,20 +2,9 @@
 
 from __future__ import annotations
 
-import io
-import struct
-import zipfile
-
-import openpyxl
 import pytest
 
-from secure_ai_gateway.errors import ParsingError, ResourceLimitError
-from secure_ai_gateway.limits import ResourceLimits
-from secure_ai_gateway.parsers import parse_document
 from secure_ai_gateway.parsers.base import neutralise_formula_prefix
-from secure_ai_gateway.parsers.csv_parser import parse_csv_bytes
-from secure_ai_gateway.parsers.text_parser import parse_text_bytes
-from secure_ai_gateway.parsers.xlsx_parser import parse_xlsx_bytes
 
 
 class TestNeutraliseFormulaPrefix:

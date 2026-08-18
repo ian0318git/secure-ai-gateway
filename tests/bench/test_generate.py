@@ -20,12 +20,12 @@ from secure_ai_gateway.detection.recognizers import (
     _EMAIL_RE,
     _EMPLOYEE_ID_RE,
     _JWT_RE,
-    _jwt_header_ok,
-    _luhn_ok,
     _PHONE_RE,
     _SECRET_KV_RE,
     _SECRET_ZH_RE,
     _TW_ID_RE,
+    _jwt_header_ok,
+    _luhn_ok,
     _tw_id_checksum,
 )
 from secure_ai_gateway.injection.detector import detect

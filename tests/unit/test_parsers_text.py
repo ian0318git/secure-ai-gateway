@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import io
-import struct
-import zipfile
 
 import openpyxl
 import pytest
@@ -12,24 +10,21 @@ import pytest
 from secure_ai_gateway.errors import ParsingError, ResourceLimitError
 from secure_ai_gateway.limits import ResourceLimits
 from secure_ai_gateway.parsers import parse_document
-from secure_ai_gateway.parsers.base import neutralise_formula_prefix
-from secure_ai_gateway.parsers.csv_parser import parse_csv_bytes
 from secure_ai_gateway.parsers.text_parser import parse_text_bytes
-from secure_ai_gateway.parsers.xlsx_parser import parse_xlsx_bytes
 
 
 class TestTextParser:
     def test_lines_become_cells(self) -> None:
-        doc = parse_text_bytes("客戶\n陳曉明\n".encode("utf-8"), "t.txt", ResourceLimits())
+        doc = parse_text_bytes("客戶\n陳曉明\n".encode(), "t.txt", ResourceLimits())
         assert [c.value for c in doc.cells] == ["客戶", "陳曉明"]
 
     def test_empty_lines_skipped(self) -> None:
-        doc = parse_text_bytes("a\n\nb\n".encode("utf-8"), "t.txt", ResourceLimits())
+        doc = parse_text_bytes(b"a\n\nb\n", "t.txt", ResourceLimits())
         assert [c.value for c in doc.cells] == ["a", "b"]
         assert doc.stats.skipped_empty_cells == 1
 
     def test_formula_line_neutralised(self) -> None:
-        doc = parse_text_bytes("=cmd\n".encode("utf-8"), "t.txt", ResourceLimits())
+        doc = parse_text_bytes(b"=cmd\n", "t.txt", ResourceLimits())
         assert [c.value for c in doc.cells] == ["'=cmd"]
 
 
@@ -51,7 +46,7 @@ class TestParseDocumentDispatch:
 
     def test_csv_dispatch(self, tmp_path) -> None:
         f = tmp_path / "t.csv"
-        f.write_bytes("a,b\n1,2\n".encode("utf-8"))
+        f.write_bytes(b"a,b\n1,2\n")
         doc = parse_document(f, ResourceLimits())
         assert doc.stats.format == "csv"
 

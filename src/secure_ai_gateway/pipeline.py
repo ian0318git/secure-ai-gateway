@@ -18,20 +18,21 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from secure_ai_gateway.detection.engine import DetectionEngine
 from secure_ai_gateway.errors import GatewayError, InstructionSecretError
 from secure_ai_gateway.injection.detector import detect
-from secure_ai_gateway.logging import log_event
 from secure_ai_gateway.limits import ResourceLimits
+from secure_ai_gateway.logging import log_event
 from secure_ai_gateway.minimisation import apply_minimisation
 from secure_ai_gateway.models import (
     CellDetection,
     DetectionResult,
     Disposition,
     DocumentCell,
+    InjectionFinding,
     PolicyDecision,
 )
 from secure_ai_gateway.parsers import parse_document
@@ -215,7 +216,7 @@ class Pipeline:
                 )
             )
 
-        instruction_findings = ()
+        instruction_findings: tuple[InjectionFinding, ...] = ()
         if instruction:
             instruction_findings = detect(instruction, "instruction")
             if instruction_findings:

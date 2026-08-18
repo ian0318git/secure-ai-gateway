@@ -21,6 +21,7 @@ import zipfile
 
 import pytest
 
+from secure_ai_gateway.errors import ResourceLimitError
 from secure_ai_gateway.limits import ResourceLimits
 from secure_ai_gateway.logging import log_event
 from secure_ai_gateway.models import (
@@ -67,7 +68,7 @@ class TestEncodingThreats:
             StubEngine({"r1_c0": (_span(EntityType.PERSON),)}),
             ResourceLimits(),
         )
-        decision, report, retained, _ = pipeline.process_file(f, request_id="r1")
+        decision, report, _, _ = pipeline.process_file(f, request_id="r1")
         assert not decision.is_blocked()
         assert decision.disposition_for("r1_c0") is Disposition.TOKENISE
         assert report.encoding == "gbk"
@@ -94,7 +95,7 @@ class TestEncodingThreats:
         """
         f = tmp_path / "u16.xlsx"
         f.write_bytes("客戶,Email\n王小明,johnwang@example.com\n".encode("utf-16"))
-        decision, report, retained, _ = Pipeline(
+        decision, _, retained, _ = Pipeline(
             StubEngine({}), ResourceLimits()
         ).process_file(f, request_id="r1")
         assert decision.is_blocked()
@@ -111,7 +112,7 @@ class TestFormulaInjection:
     @pytest.mark.parametrize("formula", ["=SUM(A1)", "+1+1", "@cmd", "＝合計"])
     def test_formula_prefix_never_reaches_detection(self, tmp_path, formula) -> None:
         f = tmp_path / "f.csv"
-        f.write_bytes(f"客戶,金額\n{formula},1000\n".encode("utf-8"))
+        f.write_bytes(f"客戶,金額\n{formula},1000\n".encode())
         pipeline = Pipeline(StubEngine({}), ResourceLimits())
         decision, report, retained, _ = pipeline.process_file(f, request_id="r1")
         assert not decision.is_blocked()
@@ -149,7 +150,7 @@ class TestZipBomb:
         idx = raw.index(b"PK\x01\x02")
         struct.pack_into("<I", raw, idx + 24, 300 * 1024 * 1024)
         f.write_bytes(bytes(raw))
-        with pytest.raises(Exception):
+        with pytest.raises(ResourceLimitError):
             parse_document(f, ResourceLimits())
 
 
@@ -165,7 +166,7 @@ class TestFailClosed:
                 raise RuntimeError("model exploded")
 
         f = tmp_path / "x.csv"
-        f.write_bytes("客戶,金額\n王小明,1000\n".encode("utf-8"))
+        f.write_bytes("客戶,金額\n王小明,1000\n".encode())
         decision, report, retained, _ = Pipeline(
             Boom({}), ResourceLimits()
         ).process_file(f, request_id="r1")
@@ -177,7 +178,7 @@ class TestFailClosed:
     def test_token_pattern_is_pii_not_secret(self, tmp_path) -> None:
         """TOKEN_PATTERN (reserved token format) tokenises, never blocks."""
         f = tmp_path / "x.csv"
-        f.write_bytes("a,b\n1,2\n".encode("utf-8"))
+        f.write_bytes(b"a,b\n1,2\n")
         pipeline = Pipeline(
             StubEngine({"r1_c0": (_span(EntityType.TOKEN_PATTERN),)}),
             ResourceLimits(),
@@ -188,7 +189,7 @@ class TestFailClosed:
 
     def test_secret_span_blocks_whole_request(self, tmp_path) -> None:
         f = tmp_path / "s.csv"
-        f.write_bytes("a,b\n1,2\n".encode("utf-8"))
+        f.write_bytes(b"a,b\n1,2\n")
         decision, _, retained, _ = Pipeline(
             StubEngine({"r1_c0": (_span(EntityType.API_KEY),)}),
             ResourceLimits(),
@@ -205,7 +206,6 @@ class TestFailClosed:
 
 class TestNoRawLeak:
     def test_log_events_never_carry_raw_values(self, caplog) -> None:
-        raw = "王小明機密內容TOP-SECRET-XYZ"
         logger = logging.getLogger("security.no_raw")
         with caplog.at_level(logging.INFO, logger="security.no_raw"):
             log_event(
@@ -226,7 +226,7 @@ class TestNoRawLeak:
 
     def test_full_pipeline_report_contains_no_raw(self, tmp_path) -> None:
         f = tmp_path / "s.csv"
-        f.write_bytes("客戶,金額\n機密客戶名稱AuroraX,1000\n".encode("utf-8"))
+        f.write_bytes("客戶,金額\n機密客戶名稱AuroraX,1000\n".encode())
         pipeline = Pipeline(
             StubEngine({"r1_c0": (_span(EntityType.PERSON),)}),
             ResourceLimits(),

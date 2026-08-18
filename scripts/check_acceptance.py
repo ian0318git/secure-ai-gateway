@@ -20,7 +20,7 @@ sys.path.insert(
     0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 )
 
-from benchmark.report import ACCEPTANCE  # noqa: E402
+from benchmark.report import ACCEPTANCE
 
 DEFAULT_REPORT = os.path.join("bench_reports", "benchmark_report.json")
 

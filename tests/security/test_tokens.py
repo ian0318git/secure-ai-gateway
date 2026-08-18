@@ -34,8 +34,8 @@ from secure_ai_gateway.models import (
 from secure_ai_gateway.pipeline import Pipeline
 from secure_ai_gateway.tokenisation.substitution import restore_text
 from secure_ai_gateway.tokenisation.vault import (
-    SessionTokenVault,
     _RESERVED_TOKEN_PREFIXES,
+    SessionTokenVault,
 )
 
 _TOKEN_RE = re.compile(r"^[A-Z][A-Z0-9]*_[0-9a-f]{8}$")
@@ -79,7 +79,7 @@ def pii_csv(tmp_path):
     """One PII cell (王小明) + one clean numeric cell."""
     f = tmp_path / "pii.csv"
     f.write_bytes(
-        "客戶,營業收入\n王小明,8.4M\n".encode("utf-8")
+        "客戶,營業收入\n王小明,8.4M\n".encode()
     )
     return f
 
@@ -89,7 +89,7 @@ def _pipeline_with_person(cell_value: str, tmp_path, **extra_spans):
     PERSON detection; returns (file, pipeline)."""
     f = tmp_path / "x.csv"
     f.write_bytes(
-        f"客戶,營業收入\n{cell_value},8.4M\n".encode("utf-8")
+        f"客戶,營業收入\n{cell_value},8.4M\n".encode()
     )
     spans = {"r1_c0": (_span(EntityType.PERSON, 0, len(cell_value), cell_value),)}
     spans.update(extra_spans)
@@ -132,7 +132,7 @@ class TestSessionIsolation:
 
     def test_blocked_session_leaves_no_state(self, tmp_path) -> None:
         f = tmp_path / "s.csv"
-        f.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode("utf-8"))
+        f.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode())
         pipe = Pipeline(
             StubEngine({"r1_c0": (_span(EntityType.API_KEY, 0, 3, "sk-"),)}),
             ResourceLimits(),
@@ -224,7 +224,7 @@ class TestInstructionChannel:
 
     def test_instruction_pii_tokenised(self, tmp_path) -> None:
         f = tmp_path / "x.csv"
-        f.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode("utf-8"))
+        f.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode())
         pipe = Pipeline(
             StubEngine(
                 {"r1_c0": (_span(EntityType.PERSON, 0, 3, "王小明"),)},
@@ -248,7 +248,7 @@ class TestInstructionChannel:
 
     def test_instruction_secret_blocks_request(self, tmp_path) -> None:
         f = tmp_path / "x.csv"
-        f.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode("utf-8"))
+        f.write_bytes("客戶,營業收入\n王小明,8.4M\n".encode())
         pipe = Pipeline(
             StubEngine(
                 {"r1_c0": (_span(EntityType.PERSON, 0, 3, "王小明"),)},
@@ -423,7 +423,7 @@ class TestDispositionsExecuted:
 
     def test_secret_blocks(self, tmp_path) -> None:
         f = tmp_path / "s.csv"
-        f.write_bytes("客戶,營業收入\nsk-live-abc,8.4M\n".encode("utf-8"))
+        f.write_bytes("客戶,營業收入\nsk-live-abc,8.4M\n".encode())
         pipe = Pipeline(
             StubEngine({"r1_c0": (_span(EntityType.API_KEY, 0, 11, "sk-live-abc"),)}),
             ResourceLimits(),
@@ -436,7 +436,7 @@ class TestDispositionsExecuted:
     def test_non_required_column_dropped(self, tmp_path) -> None:
         f = tmp_path / "w.csv"
         f.write_bytes(
-            "客戶,營業收入,員工手機\n王小明,8.4M,0912345678\n".encode("utf-8")
+            "客戶,營業收入,員工手機\n王小明,8.4M,0912345678\n".encode()
         )
         pipe = Pipeline(
             StubEngine({"r1_c0": (_span(EntityType.PERSON, 0, 3, "王小明"),)}),

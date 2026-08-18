@@ -187,6 +187,34 @@ Deliberately absent: no web framework, no database, no `requests`/`httpx`
 (SR-001); tokens come from stdlib `secrets`. Dev tooling: pytest, ruff,
 mypy, bandit, pip-audit, enforced by the pre-commit gate and CI.
 
+### What each technology does during a run
+
+The same six steps as the worked example, with the technology doing the
+work:
+
+1. **Parse** — `charset-normalizer` detects the file encoding (a wrong
+   guess turns Chinese into mojibake and blinds the detectors);
+   `openpyxl` + `defusedxml` open .xlsx safely (XXE protection);
+   `unicodedata` unifies full/half-width forms (NFKC).
+2. **Detect** — three detectors look in turn: the spaCy Chinese model
+   marks words as person/org/address; Presidio organises that into an
+   "is this PII" score, using context hints like a 客戶 header; custom
+   regex recognisers match fixed formats (TW ID numbers, phone
+   numbers) with 100% determinism.
+3. **Policy** — the static policy engine (written code, not AI) stamps
+   each cell: secret -> block the whole request, PII -> tokenise,
+   allowlisted column -> pass. The rules cannot be talked out of it.
+4. **Tokenise** — stdlib `secrets.token_hex` mints the random token
+   (`CUSTOMER_4f8a21`); the mapping lives in memory only
+   (`cryptography`/Fernet appears only for the opt-in M6 vault store).
+5. **Analyse** — stdlib `urllib.request` sends the HTTPS POST
+   (https-only enforced, SR-001); the LLM sees tokens only.
+6. **Restore** — the response guard validates every token in the reply
+   against this session's vault (unknown -> refused), scans for leaked
+   sensitive content, then substitutes the real names back.
+
+Every step above is pinned by the 753-test suite.
+
 ## Documents
 
 - `docs/FINAL_REPORT.md` — final PoC report (acceptance, evidence, residuals)

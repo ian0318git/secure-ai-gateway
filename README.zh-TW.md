@@ -164,6 +164,29 @@ export VAULT_MASTER_KEY=$(.venv/bin/python -c \
 stdlib `secrets`。開發工具：pytest、ruff、mypy、bandit、pip-audit，
 由 pre-commit gate 與 CI 強制執行。
 
+### 每個技術在執行時做什麼
+
+同一個六步驟，標出每一步實際做事的技術：
+
+1. **讀取** — `charset-normalizer` 偵測檔案編碼（猜錯會讓中文變亂碼、
+   讓偵測器瞎掉）；`openpyxl` + `defusedxml` 安全開啟 .xlsx（防
+   XXE）；`unicodedata` 統一全形／半形（NFKC）。
+2. **掃描** — 三個偵測器輪流看：spaCy 中文模型把詞標記為人／組織／
+   地址；Presidio 把線索組織成「是不是 PII」的分數（還會參考「客戶」
+   這類欄位名的上下文提示）；自訂 regex 用 100% 確定的規則抓格式
+   （身分證、手機號碼）。
+3. **政策** — 靜態政策引擎（寫死的程式，不是 AI）逐格蓋章：密碼 →
+   整筆擋下、PII → 換代號、允許清單欄位 → 放行。規則說不動。
+4. **換代號** — stdlib `secrets.token_hex` 生出隨機代號
+   （`CUSTOMER_4f8a21`）；對照表只在記憶體（`cryptography`／Fernet
+   只在 opt-in 的 M6 vault store 才登場）。
+5. **分析** — stdlib `urllib.request` 發 HTTPS POST（強制 https-only，
+   SR-001）；AI 只看到代號。
+6. **還原** — response guard 把回覆裡每個代號對照本次 session 的
+   vault 驗證（陌生代號拒絕）、掃描有無洩漏的敏感內容，再把真名換回。
+
+以上每一環都由 753 個測試釘住。
+
 ## 文件
 
 - `docs/FINAL_REPORT.md` — 最終 PoC 報告（驗收、證據、residuals）

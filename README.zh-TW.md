@@ -85,6 +85,33 @@
 Token 對應表是隨機、非順序、單一 gateway 呼叫範圍，session 結束即銷毀；
 絕不出現在 LLM 請求、log、report 或任何 client 可見的介面。
 
+### 實際例子
+
+財務部請 AI 分析這份 CSV：
+
+```
+客戶,營業收入,毛利率
+Aurora Motors AU,8.4M,32%
+```
+
+指令：`請分析這份文件的營業收入`
+
+1. **讀取** — gateway 讀檔並正規化編碼。
+2. **掃描** — `Aurora Motors AU` 被標記為識別碼；公式前綴或夾帶的惡意
+   指令也會在此被攔截。
+3. **政策（預設拒絕）** — 偵測到密碼整筆擋下；個資換代號；允許清單外的
+   欄位直接丟棄。
+4. **換代號** — AI 只看到 `CUSTOMER_4f8a21, 8.4M, 32%`。對照關係隨機
+   產生、僅本次處理有效，session 結束即銷毀。
+5. **分析** — 外部 AI 從頭到尾不知道真實客戶名。
+6. **還原** — 回覆以 `Aurora Motors AU 毛利率 32%…` 交付。本次 session
+   未發出的代號一律拒絕（`response:unknown_token`）；對照表不越過信任
+   邊界。
+
+指令本身也是受保護的輸入：其中的原始識別碼會與文件走同一條管線，才送達
+LLM。完整視覺化說明見
+[docs/gateway_example.html](docs/gateway_example.html)。
+
 試試 demo：
 
 ```bash
@@ -107,6 +134,7 @@ export VAULT_MASTER_KEY=$(.venv/bin/python -c \
 ## 文件
 
 - `docs/FINAL_REPORT.md` — 最終 PoC 報告（驗收、證據、residuals）
+- `docs/gateway_example.html` — 視覺化運作說明（瀏覽器直接開啟）
 - `CLAUDE.md` — Claude Code 專案指令（安全規則、milestone 關卡）
 - `docs/DESIGN.md` — 架構與設計規格
 - `docs/SECURITY_REQUIREMENTS.md` — 安全需求（SR-001 … SR-026）

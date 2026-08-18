@@ -103,6 +103,36 @@ Token mappings are random, non-sequential, scoped to one gateway
 invocation, and destroyed at session end. They never appear in LLM
 requests, logs, reports, or client-visible surfaces.
 
+### Worked example
+
+The finance team asks an AI to analyse this CSV:
+
+```
+客戶,營業收入,毛利率
+Aurora Motors AU,8.4M,32%
+```
+
+Instruction: `請分析這份文件的營業收入`
+
+1. **Parse** — the gateway reads the file and normalises encoding.
+2. **Detect** — `Aurora Motors AU` is flagged as an identifier; a
+   formula prefix or an injected instruction would be caught here too.
+3. **Policy (default deny)** — a secret blocks the whole request; PII
+   is tokenised; columns outside the allowlist are dropped.
+4. **Tokenise** — the LLM sees only
+   `CUSTOMER_4f8a21, 8.4M, 32%`. The mapping is random, lives for this
+   invocation only, and is destroyed at session end.
+5. **Analyse** — the external LLM never learns the real customer name.
+6. **Restore** — the answer is delivered as
+   `Aurora Motors AU 毛利率 32%…`. A token this session never issued is
+   refused (`response:unknown_token`); mappings never cross the trust
+   boundary.
+
+The instruction itself is protected input: raw identifiers inside it
+pass through the same pipeline before reaching the LLM. A full visual
+walkthrough lives at
+[docs/gateway_example.html](docs/gateway_example.html).
+
 Try the demo:
 
 ```bash
@@ -125,6 +155,7 @@ export VAULT_MASTER_KEY=$(.venv/bin/python -c \
 ## Documents
 
 - `docs/FINAL_REPORT.md` — final PoC report (acceptance, evidence, residuals)
+- `docs/gateway_example.html` — visual walkthrough (open in a browser)
 - `CLAUDE.md` — Claude Code project instructions (security rules, milestone gates)
 - `docs/DESIGN.md` — architecture and design specification
 - `docs/SECURITY_REQUIREMENTS.md` — security requirements (SR-001 … SR-026)

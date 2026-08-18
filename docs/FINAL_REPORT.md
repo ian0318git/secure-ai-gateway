@@ -1,6 +1,6 @@
 # Secure AI Gateway — Final PoC Report
 
-Version: 1.2
+Version: 1.3
 Date: 2026-08-19
 Milestones covered: M0 – M6 (all complete)
 Tag: v0.4.0
@@ -162,6 +162,29 @@ technology doing the work:
 
 Every step is pinned by the 753-test suite; per-claim traceability in
 `docs/TEST_TRACEABILITY.md`.
+
+### 6.2 What is PII?
+
+PII (personally identifiable information) is any data that identifies
+a specific person or company. The gateway's entity catalogue
+(`models.py` EntityType) covers: PERSON, ADDRESS, TW_ID, EMAIL, PHONE,
+CUSTOMER_ID, EMPLOYEE_ID, CREDIT_CARD, LOCATION, ORGANIZATION,
+BANK_ACCOUNT.
+
+Treatment is tiered and hard-coded in the policy engine (never decided
+by an LLM, never by the user):
+
+- **PII** -> tokenised (`CUSTOMER_4f8a21`), restored only within the
+  issuing session;
+- **secrets** (SECRET, API_KEY, PASSWORD, JWT, PRIVATE_KEY) -> not PII
+  but more sensitive: any occurrence blocks the whole request (fail
+  closed, SR-024);
+- **ordinary figures** (revenue `8.4M`, margin `32%`) -> neither, pass
+  through untouched.
+
+Which tier a value falls into is decided by the three-layer detector —
+Presidio, the spaCy Chinese NLP backend, and custom regex recognisers
+(§6).
 
 ---
 

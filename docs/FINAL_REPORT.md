@@ -1,7 +1,7 @@
 # Secure AI Gateway — Final PoC Report
 
-Version: 1.1
-Date: 2026-08-18
+Version: 1.2
+Date: 2026-08-19
 Milestones covered: M0 – M6 (all complete)
 Tag: v0.4.0
 
@@ -129,6 +129,39 @@ Deliberately absent: no web framework, no database, no
 an https-only guard (SR-001); tokens come from stdlib `secrets`
 (never sequential). Dev tooling (all `[dev]` extras, enforced by the
 pre-commit gate and CI): pytest 9.x, ruff, mypy, bandit, pip-audit.
+
+### 6.1 What each technology does during a run
+
+The same six pipeline steps as the README worked example, with the
+technology doing the work:
+
+1. **Parse** — `charset-normalizer` detects the file encoding (a wrong
+   guess turns Chinese into mojibake and blinds the detectors);
+   `openpyxl` + `defusedxml` open .xlsx safely (XXE protection);
+   `unicodedata` unifies full/half-width forms (NFKC) so matching and
+   token offsets stay consistent.
+2. **Detect** — three detectors look in turn: the spaCy Chinese model
+   marks words as person/org/address; Presidio organises that into an
+   "is this PII" score, using context hints (ContextAwareEnhancer —
+   e.g. a 客戶 header); custom regex recognisers match fixed formats
+   (TW ID numbers, phone numbers) with 100% determinism.
+3. **Policy** — the static policy engine (deterministic code, not an
+   LLM) stamps each cell: secret -> block the whole request, PII ->
+   tokenise, allowlisted column -> pass. The rules cannot be talked
+   out of them (SR-024).
+4. **Tokenise** — stdlib `secrets.token_hex` mints the random token
+   (`CUSTOMER_4f8a21`); the mapping lives in memory only;
+   `cryptography`/Fernet appears only for the opt-in M6 vault store
+   (SR-026).
+5. **Analyse** — stdlib `urllib.request` sends the HTTPS POST
+   (https-only enforced, SR-001); the LLM sees tokens only.
+6. **Restore** — the response guard validates every token in the reply
+   against this session's vault (unknown -> refused,
+   `response:unknown_token`), scans for leaked sensitive content, then
+   substitutes the real names back (SR-010).
+
+Every step is pinned by the 753-test suite; per-claim traceability in
+`docs/TEST_TRACEABILITY.md`.
 
 ---
 

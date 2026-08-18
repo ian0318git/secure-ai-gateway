@@ -131,6 +131,30 @@ export VAULT_MASTER_KEY=$(.venv/bin/python -c \
     --provider fake --vault-store tmp/demo.vault   # 再次執行，token 相同
 ```
 
+## 技術棧
+
+核心偵測層：
+
+| 技術 | 版本 | 角色 |
+|---|---|---|
+| Presidio Analyzer | 2.2.364 | PII 偵測框架（規則 + ML recognizers） |
+| spaCy + `zh_core_web_lg` | 3.7.2（575MB 模型） | 注入 Presidio 的中文 NLP 後端 —— 人名／組織／地址 NER |
+| 自訂 regex recognizers | 內建 | 確定性規則：台灣身分證字號、手機號碼、中文姓名規則 |
+
+處理與儲存層：
+
+| 技術 | 版本 | 角色 |
+|---|---|---|
+| charset-normalizer | 3.3.2 | 編碼偵測（避免 mojibake 藏住 PII） |
+| pandas / openpyxl | >=2.2 / >=3.1.2 | 表格資料、.xlsx 解析 |
+| defusedxml | 0.7.1 | 安全 XML 解析（防 XXE） |
+| cryptography（Fernet） | >=50 | 持久 token store 加密（M6，opt-in） |
+
+刻意不用：無 web framework、無資料庫、無 `requests`/`httpx` —— LLM
+呼叫用 stdlib `urllib.request` 並強制 https-only（SR-001）；token 用
+stdlib `secrets`。開發工具：pytest、ruff、mypy、bandit、pip-audit，
+由 pre-commit gate 與 CI 強制執行。
+
 ## 文件
 
 - `docs/FINAL_REPORT.md` — 最終 PoC 報告（驗收、證據、residuals）

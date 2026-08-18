@@ -152,6 +152,30 @@ export VAULT_MASTER_KEY=$(.venv/bin/python -c \
     --provider fake --vault-store tmp/demo.vault   # same tokens again
 ```
 
+## Technology stack
+
+Core detection:
+
+| Technology | Version | Role |
+|---|---|---|
+| Presidio Analyzer | 2.2.364 | PII detection framework (rule + ML recognisers) |
+| spaCy + `zh_core_web_lg` | 3.7.2 (575MB model) | Chinese NLP backend wired into Presidio — person / org / address NER |
+| custom regex recognisers | built-in | deterministic rules: TW ID numbers, phone numbers, Chinese name heuristics |
+
+Processing & storage:
+
+| Technology | Version | Role |
+|---|---|---|
+| charset-normalizer | 3.3.2 | encoding detection (mojibake hides PII) |
+| pandas / openpyxl | >=2.2 / >=3.1.2 | tabular data, .xlsx parsing |
+| defusedxml | 0.7.1 | safe XML parsing (XXE protection) |
+| cryptography (Fernet) | >=50 | encrypted persistent token store (M6, opt-in) |
+
+Deliberately absent: no web framework, no database, no `requests`/`httpx`
+— the LLM call uses stdlib `urllib.request` behind an https-only guard
+(SR-001); tokens come from stdlib `secrets`. Dev tooling: pytest, ruff,
+mypy, bandit, pip-audit, enforced by the pre-commit gate and CI.
+
 ## Documents
 
 - `docs/FINAL_REPORT.md` — final PoC report (acceptance, evidence, residuals)

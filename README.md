@@ -133,6 +133,17 @@ pass through the same pipeline before reaching the LLM. A full visual
 walkthrough lives at
 [docs/gateway_example.html](docs/gateway_example.html).
 
+### What is PII?
+
+PII (personally identifiable information) is any data that identifies a
+specific person or company — names, addresses, ID numbers, phone
+numbers, emails, customer/employee IDs, credit cards. The gateway
+tokenises these. Secrets (API keys, passwords, JWTs, private keys) are
+not PII but are more sensitive: their presence blocks the whole request
+(fail closed). Ordinary figures (revenue, margins) are neither and pass
+through. The three-layer detector — Presidio, the Chinese NLP backend,
+and custom regex recognisers — decides which is which.
+
 Try the demo:
 
 ```bash

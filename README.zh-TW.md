@@ -112,6 +112,15 @@ Aurora Motors AU,8.4M,32%
 LLM。完整視覺化說明見
 [docs/gateway_example.html](docs/gateway_example.html)。
 
+### 什麼是 PII？
+
+PII（個人可識別資訊，個資）是任何能認出特定個人或公司的資料 —— 姓名、
+地址、身分證字號、電話、Email、客戶／員工編號、信用卡等。Gateway 對這
+些內容換代號。密碼類（API key、密碼、JWT、私鑰）不是 PII 但更敏感：
+偵測到就整筆擋下（fail closed）。一般數字（營收、毛利率）兩者都不是，
+直接放行。三層偵測器 —— Presidio、中文 NLP 後端、自訂 regex
+recognizers —— 負責分辨哪個是哪個。
+
 試試 demo：
 
 ```bash

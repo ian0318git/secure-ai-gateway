@@ -36,12 +36,20 @@ dependencies = [
     # M6: Fernet authenticated encryption for the opt-in persistent
     # token store (DESIGN §11.1, SR-026). Wheels only — no build tools
     # on this machine (see the spacy note above).
-    "cryptography>=42,<46",
+    # Floor 50: 48.0.0 and earlier bundle a vulnerable OpenSSL
+    # (GHSA-537c-gmf6-5ccf); 49.x fixes PYSEC-2026-3554 but still
+    # carries PYSEC-2026-3552 (PKCS#7 / certificate verification),
+    # fixed in 50.0.0. Verified clean by pip-audit (2026-08-18).
+    "cryptography>=50,<51",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8,<9",
+    "pytest>=9.0.3,<10",  # floor 9.0.3: PYSEC-2026-1845
+    "ruff>=0.8,<1",
+    "mypy>=1.13,<2",
+    "bandit>=1.8,<2",
+    "pip-audit>=2.7,<3",
 ]
 
 [tool.setuptools.packages.find]
@@ -53,3 +61,17 @@ pythonpath = ["."]  # the benchmark package lives at the repo root
 markers = [
     "benchmark: long-running benchmark suite (run with -m benchmark)",
 ]
+
+[tool.ruff]
+line-length = 79
+target-version = "py312"
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src"]
+
+[[tool.mypy.overrides]]
+# pandas / openpyxl ship no type stubs; the type-checked surface is the
+# gateway code, not the library APIs.
+module = ["pandas", "openpyxl", "openpyxl.utils.exceptions"]
+ignore_missing_imports = true

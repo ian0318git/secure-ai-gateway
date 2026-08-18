@@ -1,6 +1,6 @@
 # Secure AI Gateway — Final PoC Report
 
-Version: 1.0
+Version: 1.1
 Date: 2026-08-18
 Milestones covered: M0 – M6 (all complete)
 Tag: v0.4.0
@@ -17,9 +17,9 @@ identities in a Fernet-encrypted store.
 
 Final status:
 
-- 752 automated tests green (570 unit / 153 security / 29 benchmark)
+- 753 automated tests green (571 unit / 153 security / 29 benchmark)
 - detection benchmark PASS (normatively re-checked)
-- 52 commits, milestones M0–M6, all pushed
+- 59 commits, milestones M0–M6, all pushed
 - `[REVIEW_PASSED]` at every milestone (evidence-based review)
 
 ---
@@ -98,10 +98,10 @@ pinned in `tests/security/test_m5_benchmark_evidence.py`.
 
 | Suite | Count |
 |---|---|
-| `tests/unit/` | 570 |
+| `tests/unit/` | 571 |
 | `tests/security/` | 153 |
 | `tests/benchmark/` (marked `benchmark`, slow) | 29 |
-| **Total** | **752** |
+| **Total** | **753** |
 
 Run: `.venv/bin/pytest tests -q` (full suite, ~4 s excluding
 benchmark), plus `.venv/bin/pytest -m benchmark tests/benchmark/`
@@ -109,7 +109,30 @@ for the detection benchmark.
 
 ---
 
-# 6. Security Claims vs Evidence
+# 6. Technology Stack
+
+Runtime dependencies (pinned in `pyproject.toml`), all wheels — no
+build toolchain required on the machine:
+
+| Layer | Technology | Version | Role |
+|---|---|---|---|
+| Detection | Presidio Analyzer | 2.2.364 | PII detection framework (rule + ML recognisers) |
+| Detection | spaCy + `zh_core_web_lg` | 3.7.2 (575MB model) | Chinese NLP backend wired into Presidio — person / org / address NER (SR-006: Presidio alone is not sufficient) |
+| Detection | custom regex recognisers | built-in | deterministic format rules: TW ID numbers, phone numbers, Chinese name heuristics |
+| Processing | charset-normalizer | 3.3.2 | encoding detection (mojibake hides PII — T-I09) |
+| Processing | pandas / openpyxl | >=2.2 / >=3.1.2 | tabular data, .xlsx parsing |
+| Processing | defusedxml | 0.7.1 | safe XML parsing (XXE protection) |
+| Storage (M6) | cryptography (Fernet) | >=50,<51 | authenticated encryption for the opt-in persistent token store (SR-026) |
+
+Deliberately absent: no web framework, no database, no
+`requests`/`httpx` — the LLM call uses stdlib `urllib.request` behind
+an https-only guard (SR-001); tokens come from stdlib `secrets`
+(never sequential). Dev tooling (all `[dev]` extras, enforced by the
+pre-commit gate and CI): pytest 9.x, ruff, mypy, bandit, pip-audit.
+
+---
+
+# 7. Security Claims vs Evidence
 
 | Claim | Control | Evidence |
 |---|---|---|
@@ -128,7 +151,7 @@ for the detection benchmark.
 
 ---
 
-# 7. Recorded Residuals and Limitations
+# 8. Recorded Residuals and Limitations
 
 The PoC does NOT guarantee (POC_PLAN §10, THREAT_MODEL §6, DECISIONS):
 
@@ -157,10 +180,10 @@ merging can cause conservative false-positive blocks.
 
 ---
 
-# 8. Reproduction
+# 9. Reproduction
 
 ```bash
-.venv/bin/pytest tests -q                          # full suite (752)
+.venv/bin/pytest tests -q                          # full suite (753)
 .venv/bin/pytest -m benchmark tests/benchmark/     # detection benchmark
 .venv/bin/python scripts/check_acceptance.py       # normative re-check
 
@@ -177,9 +200,9 @@ export VAULT_MASTER_KEY=$(.venv/bin/python -c \
 
 ---
 
-# 9. Repository Facts
+# 10. Repository Facts
 
-- 52 commits on `main` (M0 `8bd47d5` … M6 `e201ed7`), all pushed
+- 59 commits on `main` (M0 `8bd47d5` … latest docs), all pushed
 - tag `v0.4.0` marks the end of the PoC
 - synthetic data only; no real PII, secrets, or company documents
 - dependencies kept minimal: cryptography added at M6 (the only

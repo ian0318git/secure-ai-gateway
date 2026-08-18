@@ -56,7 +56,7 @@ It does **not** replace enterprise governance:
 
 ## Status
 
-- Phase: **M6 — Persistent token store (implemented, opt-in)**
+- Phase: **PoC complete (M0–M6, v0.4.0)** — see `docs/FINAL_REPORT.md`
 - M0 design review: done (v0.3)
 - M1 detection: done — benchmark acceptance PASS (aggregate
   precision 0.8458 / recall 0.9738; see `docs/DECISIONS.md`)
@@ -124,6 +124,7 @@ export VAULT_MASTER_KEY=$(.venv/bin/python -c \
 
 ## Documents
 
+- `docs/FINAL_REPORT.md` — final PoC report (acceptance, evidence, residuals)
 - `CLAUDE.md` — Claude Code project instructions (security rules, milestone gates)
 - `docs/DESIGN.md` — architecture and design specification
 - `docs/SECURITY_REQUIREMENTS.md` — security requirements (SR-001 … SR-026)

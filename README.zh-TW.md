@@ -44,7 +44,7 @@
 
 ## 現況
 
-- 階段：**M6 — 持久 token 儲存（已實作，opt-in）**
+- 階段：**PoC 完成（M0–M6，v0.4.0）** — 見 `docs/FINAL_REPORT.md`
 - M0 設計審查：完成（v0.3）
 - M1 偵測：完成 — benchmark acceptance PASS（aggregate precision 0.8458 /
   recall 0.9738；見 `docs/DECISIONS.md`）
@@ -106,6 +106,7 @@ export VAULT_MASTER_KEY=$(.venv/bin/python -c \
 
 ## 文件
 
+- `docs/FINAL_REPORT.md` — 最終 PoC 報告（驗收、證據、residuals）
 - `CLAUDE.md` — Claude Code 專案指令（安全規則、milestone 關卡）
 - `docs/DESIGN.md` — 架構與設計規格
 - `docs/SECURITY_REQUIREMENTS.md` — 安全需求（SR-001 … SR-026）

@@ -224,7 +224,9 @@ thresholds are adjusted — the acceptance thresholds are NOT lowered
 
 # 8. Report Format
 
-`bench_reports/benchmark_report.json` (gitignored):
+`bench_reports/benchmark_report.json` (committed — it carries the
+SR-015 acceptance evidence, re-verified in CI by
+`tests/security/test_m5_benchmark_evidence.py`):
 
 ```json
 {

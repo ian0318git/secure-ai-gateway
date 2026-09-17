@@ -23,7 +23,16 @@ htmlcov/
 # Local artifacts
 tmp/
 *.log
-bench_reports/
+# Benchmark outputs are generated, but the report carrying the SR-015
+# acceptance evidence MUST be committed: the M5 evidence test
+# re-verifies it, and a test cannot verify a file a fresh clone does
+# not have. Note the form — excluding the DIRECTORY would defeat the
+# negations below, because git cannot re-include a file whose parent
+# directory is excluded. Anything else the benchmark writes stays
+# ignored.
+bench_reports/*
+!bench_reports/benchmark_report.json
+!bench_reports/benchmark_report.md
 bench_cache/
 
 # M6 persistent token stores (SR-026: mappings never committed)

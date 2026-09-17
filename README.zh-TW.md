@@ -256,7 +256,10 @@ python3 -m venv .venv
 .venv/bin/python scripts/check_acceptance.py     # M1 驗收門檻
 ```
 
-Benchmark 輸出在 `bench_reports/`（gitignored）。
+Benchmark 輸出在 `bench_reports/`。報告檔對（`benchmark_report.json`
++ `.md`）**有進版控** —— 它是 SR-015 的驗收證據，由
+`tests/security/test_m5_benchmark_evidence.py` 重驗，CI 需要它；benchmark
+產生的其他檔案仍為 gitignored。
 
 ## 授權
 

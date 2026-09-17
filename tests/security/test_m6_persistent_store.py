@@ -11,6 +11,7 @@ sessions; store files are never committed.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 from cryptography.fernet import Fernet
@@ -28,6 +29,12 @@ from secure_ai_gateway.tokenisation.persistent import PersistentTokenStore
 from secure_ai_gateway.tokenisation.vault import TOKEN_RE
 
 _KEY = Fernet.generate_key()
+
+#: Repository root, derived rather than hard-coded: an absolute path to
+#: one developer's checkout makes the test fail on every other machine
+#: (CI included), which is how it went unnoticed here — see the
+#: git-hygiene test below.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _encrypt(plaintext: bytes) -> bytes:
@@ -238,7 +245,7 @@ class TestRepoHygiene:
 
         out = subprocess.run(
             ["git", "check-ignore", "demo.vault", "demo.vault.tmp"],
-            cwd="/home/ian/github-project/secure-ai-gateway",
+            cwd=_REPO_ROOT,
             capture_output=True,
             text=True,
             check=False,  # exit code asserted below

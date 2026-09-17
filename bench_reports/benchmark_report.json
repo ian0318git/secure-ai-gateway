@@ -1,0 +1,303 @@
+{
+  "acceptance": {
+    "details": {
+      "ADDRESS_precision": {
+        "actual": 1.0,
+        "passed": true,
+        "required": 0.8
+      },
+      "ADDRESS_recall": {
+        "actual": 1.0,
+        "passed": true,
+        "required": 0.85
+      },
+      "CUSTOMER_ID_precision": {
+        "actual": 1.0,
+        "passed": true,
+        "required": 0.8
+      },
+      "CUSTOMER_ID_recall": {
+        "actual": 1.0,
+        "passed": true,
+        "required": 0.85
+      },
+      "EMAIL_precision": {
+        "actual": 1.0,
+        "passed": true,
+        "required": 0.8
+      },
+      "EMAIL_recall": {
+        "actual": 1.0,
+        "passed": true,
+        "required": 0.85
+      },
+      "EMPLOYEE_ID_precision": {
+        "actual": 1.0,
+        "passed": true,
+        "required": 0.8
+      },
+      "EMPLOYEE_ID_recall": {
+        "actual": 1.0,
+        "passed": true,
+        "required": 0.85
+      },
+      "PERSON_precision": {
+        "actual": 0.8475,
+        "passed": true,
+        "required": 0.8
+      },
+      "PERSON_recall": {
+        "actual": 0.8525,
+        "passed": true,
+        "required": 0.85
+      },
+      "PHONE_precision": {
+        "actual": 1.0,
+        "passed": true,
+        "required": 0.8
+      },
+      "PHONE_recall": {
+        "actual": 1.0,
+        "passed": true,
+        "required": 0.85
+      },
+      "TW_ID_precision": {
+        "actual": 1.0,
+        "passed": true,
+        "required": 0.8
+      },
+      "TW_ID_recall": {
+        "actual": 1.0,
+        "passed": true,
+        "required": 0.85
+      },
+      "aggregate_precision": {
+        "actual": 0.8458,
+        "passed": true,
+        "required": 0.8
+      },
+      "aggregate_recall": {
+        "actual": 0.9738,
+        "passed": true,
+        "required": 0.9
+      }
+    },
+    "passed": true
+  },
+  "aggregate": {
+    "f1": 0.9053,
+    "fn": 52,
+    "fp": 352,
+    "ioU_ge_0_5": 0.966,
+    "precision": 0.8458,
+    "recall": 0.9738,
+    "tp": 1931
+  },
+  "calibrated_thresholds": {
+    "ADDRESS": 0.4,
+    "API_KEY": 0.4,
+    "BANK_ACCOUNT": 0.5,
+    "COMPANY_NAME": 0.4,
+    "CREDIT_CARD": 0.4,
+    "CUSTOMER_ID": 0.4,
+    "EMAIL": 0.4,
+    "EMPLOYEE_ID": 0.4,
+    "JWT": 0.4,
+    "LOCATION": 0.5,
+    "ORGANIZATION": 0.5,
+    "PASSWORD": 0.5,
+    "PERSON": 0.9,
+    "PHONE": 0.4,
+    "PRIVATE_KEY": 0.5,
+    "SECRET": 0.4,
+    "TOKEN_PATTERN": 0.5,
+    "TW_ID": 0.4
+  },
+  "corpus": {
+    "injection": 200,
+    "negative": 2500,
+    "positive": 9550
+  },
+  "injection": {
+    "clean_control": 150,
+    "clean_findings": [],
+    "expected": 200,
+    "hits": 200,
+    "missed": []
+  },
+  "per_entity": {
+    "ADDRESS": {
+      "f1": 1.0,
+      "fn": 0,
+      "fp": 0,
+      "ioU_ge_0_5": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "tp": 248
+    },
+    "API_KEY": {
+      "f1": 0.9655,
+      "fn": 2,
+      "fp": 0,
+      "ioU_ge_0_5": 0.0,
+      "precision": 1.0,
+      "recall": 0.9333,
+      "tp": 28
+    },
+    "BANK_ACCOUNT": {
+      "f1": 0.0,
+      "fn": 0,
+      "fp": 0,
+      "ioU_ge_0_5": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "tp": 0
+    },
+    "COMPANY_NAME": {
+      "f1": 0.8936,
+      "fn": 0,
+      "fp": 40,
+      "ioU_ge_0_5": 0.9167,
+      "precision": 0.8077,
+      "recall": 1.0,
+      "tp": 168
+    },
+    "CREDIT_CARD": {
+      "f1": 1.0,
+      "fn": 0,
+      "fp": 0,
+      "ioU_ge_0_5": 0.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "tp": 67
+    },
+    "CUSTOMER_ID": {
+      "f1": 1.0,
+      "fn": 0,
+      "fp": 0,
+      "ioU_ge_0_5": 0.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "tp": 208
+    },
+    "EMAIL": {
+      "f1": 1.0,
+      "fn": 0,
+      "fp": 0,
+      "ioU_ge_0_5": 0.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "tp": 219
+    },
+    "EMPLOYEE_ID": {
+      "f1": 1.0,
+      "fn": 0,
+      "fp": 0,
+      "ioU_ge_0_5": 0.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "tp": 208
+    },
+    "JWT": {
+      "f1": 1.0,
+      "fn": 0,
+      "fp": 0,
+      "ioU_ge_0_5": 0.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "tp": 30
+    },
+    "LOCATION": {
+      "f1": 0.0,
+      "fn": 0,
+      "fp": 118,
+      "ioU_ge_0_5": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "tp": 0
+    },
+    "ORGANIZATION": {
+      "f1": 0.0,
+      "fn": 0,
+      "fp": 142,
+      "ioU_ge_0_5": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "tp": 0
+    },
+    "PASSWORD": {
+      "f1": 0.0,
+      "fn": 0,
+      "fp": 0,
+      "ioU_ge_0_5": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "tp": 0
+    },
+    "PERSON": {
+      "f1": 0.85,
+      "fn": 50,
+      "fp": 52,
+      "ioU_ge_0_5": 0.9654,
+      "precision": 0.8475,
+      "recall": 0.8525,
+      "tp": 289
+    },
+    "PHONE": {
+      "f1": 1.0,
+      "fn": 0,
+      "fp": 0,
+      "ioU_ge_0_5": 0.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "tp": 226
+    },
+    "PRIVATE_KEY": {
+      "f1": 0.0,
+      "fn": 0,
+      "fp": 0,
+      "ioU_ge_0_5": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "tp": 0
+    },
+    "SECRET": {
+      "f1": 1.0,
+      "fn": 0,
+      "fp": 0,
+      "ioU_ge_0_5": 0.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "tp": 30
+    },
+    "TOKEN_PATTERN": {
+      "f1": 0.0,
+      "fn": 0,
+      "fp": 0,
+      "ioU_ge_0_5": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "tp": 0
+    },
+    "TW_ID": {
+      "f1": 1.0,
+      "fn": 0,
+      "fp": 0,
+      "ioU_ge_0_5": 0.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "tp": 210
+    },
+    "aggregate": {
+      "f1": 0.9053,
+      "fn": 52,
+      "fp": 352,
+      "ioU_ge_0_5": 0.966,
+      "precision": 0.8458,
+      "recall": 0.9738,
+      "tp": 1931
+    }
+  },
+  "run_id": "d6404ed05358",
+  "seed": 42
+}

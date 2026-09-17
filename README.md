@@ -287,7 +287,11 @@ python3 -m venv .venv
 .venv/bin/python scripts/check_acceptance.py     # M1 acceptance gates
 ```
 
-Benchmark outputs go to `bench_reports/` (gitignored).
+Benchmark outputs go to `bench_reports/`. The report pair
+(`benchmark_report.json` + `.md`) is **committed** — it is the SR-015
+acceptance evidence that `tests/security/test_m5_benchmark_evidence.py`
+re-verifies, so CI needs it; any other file the benchmark writes stays
+gitignored.
 
 ## License
 

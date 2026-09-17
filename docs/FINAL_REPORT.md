@@ -1,7 +1,7 @@
 # Secure AI Gateway — Final PoC Report
 
-Version: 1.3
-Date: 2026-08-19
+Version: 1.4
+Date: 2026-09-17
 Milestones covered: M0 – M6 (all complete)
 Tag: v0.4.0
 
@@ -19,7 +19,7 @@ Final status:
 
 - 753 automated tests green (571 unit / 153 security / 29 benchmark)
 - detection benchmark PASS (normatively re-checked)
-- 59 commits, milestones M0–M6, all pushed
+- 66 commits; milestones M0–M6 complete and pushed
 - `[REVIEW_PASSED]` at every milestone (evidence-based review)
 
 ---
@@ -262,8 +262,9 @@ export VAULT_MASTER_KEY=$(.venv/bin/python -c \
 
 # 10. Repository Facts
 
-- 59 commits on `main` (M0 `8bd47d5` … latest docs), all pushed
-- tag `v0.4.0` marks the end of the PoC
+- 66 commits on `main` (M0 `8bd47d5` … latest docs); M0–M6 pushed,
+  the 2026-09-18 dashboard commits are local
+- tag `v0.4.0` (`536f0ba`, 53 commits) marks the end of the PoC
 - synthetic data only; no real PII, secrets, or company documents
 - dependencies kept minimal: cryptography added at M6 (the only
   runtime dependency beyond the detection stack)

@@ -443,6 +443,53 @@ Mitigation:
 
 ---
 
+### T-I12 — Mapping Disclosure Through the Local Debug Dashboard
+
+The dashboard (`tools/dashboard`, SR-027) deliberately serves the
+complete raw → token mapping to a loopback browser and holds it for the
+process lifetime. An attacker with any of the following reaches it:
+
+- a browser extension, screenshot/OCR tool, clipboard manager, or
+  browser sync/profile reader on the same machine
+- a same-user process that reads the URL from terminal scrollback,
+  `/proc/<pid>/cmdline`, shell history, or a tmux buffer
+- a process on a shared/CI host (loopback is not per-user isolation on
+  Linux)
+- a port-forwarding path the code cannot control (`ssh -L`,
+  dev-container proxies, `GatewayPorts`)
+- a privileged local sniffer (no TLS, no auth beyond the path token)
+
+Impact:
+Full disclosure of every mapping in the dashboard's retention window,
+and of the raw document content those mappings came from.
+
+Status:
+Applicable — a documented, accepted residual of a development tool.
+
+Mitigation:
+
+- the tool is scoped to the operator's own machine: loopback bind only
+  (S1), never a wildcard address
+- per-run 128-bit path token; wrong or missing token returns 404, not
+  403 (S2/S3) — a probe cannot confirm the dashboard is running
+- `Host` allow-list and own-`Origin`-only, with no CORS header on any
+  response (S4–S7), which blocks DNS rebinding and cross-origin reads
+- `no-store` on every response (S8); GET/HEAD only (S9)
+- no external resource, nonce-based CSP, `textContent`-only rendering
+  (D9) — no exfiltration path and no HTML sink
+- nothing is written to disk, and `tools/` never calls `log_event`
+  (D10) — the mapping cannot reach a log file or a dump
+- the tool wraps the provider interface, not the transport, so
+  `ANTHROPIC_API_KEY` is unreachable (D3)
+- residual limits are recorded rather than mitigated: `no-store` does
+  not sandbox a browser extension, the bind cannot defeat port
+  forwarding, memory is not zeroised, and the mapping lifetime is the
+  process lifetime (DECISIONS 2026-09-18, D12)
+- the dashboard MUST NOT be cited as a mitigation for any other threat
+  (SR-027)
+
+---
+
 ## D — Denial of Service
 
 ### T-D01 — Request Flooding
@@ -500,6 +547,32 @@ Mitigation:
 - documented residual (DECISIONS M6, D6): no cap, compaction, or
   retention in the PoC
 - MVP: retention policy, compaction, store quotas
+
+---
+
+### T-D05 — Debug Dashboard Resource Growth
+
+The dashboard retains each session's document cells, mapping, wire body
+and restored response in memory. An operator submitting many documents
+grows the process without bound until it is restarted.
+
+Impact:
+Denial of service against the development machine only; the packaged
+gateway is unaffected (the tool is not on any request path).
+
+Status:
+Applicable — bounded by configuration, not eliminated.
+
+Mitigation:
+
+- `--max-sessions N` evicts the oldest finished session on insert
+- `--purge-after SECONDS` drops finished sessions older than the window
+- a still-running session is never purged, so a long run cannot be
+  dropped mid-flight
+- all state is in-memory by design (SR-027): a restart is a complete
+  and costless reset, because nothing was persisted
+- residual: the defaults are a bound, not a budget — an operator who
+  raises them is choosing the exposure (DECISIONS 2026-09-18, D12)
 
 ---
 
@@ -599,10 +672,12 @@ These limitations must remain documented.
 | T-I09 | Encoding-based detection evasion | Applicable |
 | T-I10 | At-rest disclosure of token mappings | Applicable |
 | T-I11 | Store master key compromise | Applicable |
+| T-I12 | Dashboard mapping disclosure | Applicable (accepted residual) |
 | T-D01 | Request flooding | Applicable |
 | T-D02 | Resource exhaustion | Applicable |
 | T-D03 | LLM cost abuse | Applicable |
 | T-D04 | Store growth exhaustion | Applicable |
+| T-D05 | Dashboard resource growth | Applicable (bounded) |
 | T-E01 | Policy bypass | Applicable |
 | T-E02 | Privilege escalation | Applicable |
 
@@ -623,12 +698,14 @@ These limitations must remain documented.
 | T-I09 | Encoding detection (SR-025) | Unit tests |
 | T-I10 | Fernet at-rest encryption (SR-026) | Security tests |
 | T-I11 | Env-only master key handling (SR-026) | Security tests |
+| T-I12 | Loopback-only bind + path token + Host/Origin gates + no-store (SR-027) | Security tests (S1–S13) + recorded residuals |
 | T-T03 | Reserved token format (SR-023) | Security tests |
 | T-T04 | Formula neutralisation (SR-025) | Unit tests |
 | T-T05 | Fernet authenticated encryption + atomic write + version/shape validation (SR-026) | Security tests |
 | T-T06 | Filesystem access control (residual: no store fingerprint, DECISIONS M6 D6) | Design review |
 | T-D02 | File/resource limits | Unit/security tests |
 | T-D04 | Documented residual — no cap/compaction (DECISIONS M6 D6) | Design review |
+| T-D05 | `--max-sessions` / `--purge-after` bounds (SR-027) | Unit tests |
 | T-E01 | Server-side policy enforcement | Security tests |
 | T-E02 | Server-side authorisation | Security tests |
 

@@ -5,6 +5,152 @@ Reverse-chronological.
 
 ---
 
+## 2026-09-18 — Local Debug Dashboard (`tools/dashboard`)
+
+**Approval record**: the user approved 2026-09-18 a **local-only debug
+dashboard** that shows, for each session, the input document, what every
+pipeline stage did, and the **complete raw → token mapping** in the
+browser. The user's stated requirement was explicit: the mapping must be
+visible in full on the page ("一定要在網頁上看到完整對照"). Two
+documented guarantees are relaxed **for this tool only** — the packaged
+gateway (`src/secure_ai_gateway`) is not modified and its guarantees are
+unchanged:
+
+1. **CLAUDE.md §2 / SR-002** — "token mappings MUST NOT appear in
+   client-side code". The dashboard serves the mapping to a browser on
+   loopback. Recorded in CLAUDE.md §6.17.
+2. **SR-019** — "mappings MUST be destroyed at session end". The
+   recorder's copy outlives `Session.run`, because `Session.run` clears
+   the vault in a `finally` (`session.py:159`). **This is a genuine
+   relaxation, not a reinterpretation**: "destroyed at session end" is
+   true of `src/secure_ai_gateway` and FALSE of a running dashboard
+   process, whose mapping lifetime is the process lifetime. Recorded in
+   SR-027.
+
+- **D1 — Capture at issue time, never snapshot the vault**:
+  `RecordingVault(SessionTokenVault)` records inside `token_for`, the
+  ONLY token-creation path (`vault.py:110-126`). Snapshotting the vault
+  would race a `finally` block the tool does not control and would break
+  silently on refactor. `clear()` is inherited in effect: the real
+  mapping is still destroyed, and the recorder holds a SEPARATE
+  in-memory structure. Mirrors the M6 `PersistentSessionVault`
+  precedent; no new public API is added to `vault.py`.
+- **D2 — The protected instruction is captured in an overridden
+  `clear()`**, immediately before `super().clear()` nulls
+  `vault.protected_instruction`. It is session state (SR-022), it is
+  destroyed on the same path, and it is the only way to show the
+  operator what the instruction looked like after protection.
+- **D3 — The provider seam, not the transport seam**: a `Transport`
+  wrapper would (a) miss `EchoProvider`, which has no transport, and
+  (b) **see the `x-api-key` header**. Wrapping `LLMProvider.complete`
+  means the credential never enters the tool's data at all, so there is
+  nothing to redact. Pinned by an isolation sweep over the whole payload.
+- **D4 — Run the real `Session.run`, attach pre-existing seams**: the
+  four seams (Vault via `Pipeline(vault_factory=...)`, Engine via
+  `Pipeline(engine, ...)`, Provider via `Session(pipeline, provider)`,
+  Logging via a `logging.Handler`) are all public extension points the
+  existing test suite already uses. Driving `Pipeline.process_file`
+  directly would have forced the tool to re-implement
+  `build_request` → `provider.complete` → `guard.check`, duplicating
+  security-critical orchestration in a debug tool — a debug tool that
+  can diverge from the real path is worse than none.
+- **D5 — Phase disambiguation is a flag, not text matching**:
+  `analyze_text` runs twice per session (instruction protection, then
+  the response guard's scan). `RecordingProvider` flips a response-phase
+  flag before returning, so the instruction view cannot be overwritten
+  by the response scan. Deterministic; no re-scan of the response here
+  (the guard's own verdict already arrives on `SessionResult`).
+- **D6 — Two structurally separate channels**: `payload["report"]` is
+  *exactly* `MetadataReport.to_dict()` with no added keys, so the
+  existing suite's report guarantees (tests/security/test_tokens.py,
+  test_m4_response.py, tests/unit/test_pipeline.py) transfer unchanged.
+  Raw values and tokens live ONLY under the paths declared in
+  `model.RAW_OR_TOKEN_PATHS`; `redacted_view()` strips exactly those, and
+  the isolation sweep asserts the remainder carries no fixture raw, no
+  `TOKEN_RE` match, and no credential. Pinned by
+  `tests/tools/test_payload_isolation.py`.
+- **D7 — The sweep is evidence, not proof**: an undeclared field is
+  caught only when it holds a fixture-known value or a `TOKEN_RE` match.
+  Adding a raw-carrying field WITHOUT declaring it in
+  `RAW_OR_TOKEN_PATHS` is the realistic failure mode. Two companion
+  tests keep the declaration honest: every declared path must exist and
+  be non-`None` in a full run, and `redacted_view` must actually reach
+  every declared path. The review checklist requires updating that set
+  in the same change that adds such a field.
+- **D8 — Localhost server hardening (stdlib `http.server` only)**:
+  binds `127.0.0.1` (never a wildcard), one writer / N readers behind an
+  `RLock`, `allow_reuse_address = False` so a busy port fails loudly.
+  Guard order: **Host allow-list → Origin exact-match → 128-bit path
+  token → method → route**. Wrong or missing token returns **404, not
+  403**, so a probe cannot confirm a dashboard is listening. No CORS
+  header is ever sent, so a foreign page can neither read a response nor
+  complete a preflight. Every response carries an accurate
+  `Content-Length` (`HTTP/1.1` clients hang without it) plus `no-store`,
+  `nosniff`, `no-referrer`, and a nonce-based CSP. `server_bind` is
+  overridden to skip `HTTPServer`'s reverse-DNS `getfqdn()` call — a
+  name-resolution call this tool has no reason to make. Explicitly
+  recorded: **the 128-bit path token is the load-bearing control**; the
+  Host allow-list is the second layer, and Host-checking alone is not
+  sufficient (any other local process can reach loopback — loopback is
+  not per-user isolation on Linux). All 13 properties are pinned over a
+  real socket in `tests/tools/test_server_security.py`.
+- **D9 — CSP nonce, `textContent`-only rendering**: the page template is
+  read via `importlib.resources` and a per-run nonce is substituted at
+  serve time, so an injected inline `<script>` would not execute even if
+  a future edit introduced an HTML sink. Cell values are untrusted
+  document content (CLAUDE.md §6.6), so the page builds DOM with
+  `createElement` + `textContent` only — no `innerHTML`, no
+  `<script src>`, no external origin, no `EventSource`/`WebSocket`, and
+  the only `fetch` targets are our own two JSON endpoints. All pinned by
+  source scan in `tests/tools/test_page.py`.
+- **D10 — The tool never writes, and never emits to the log stream**:
+  no dump file, no cache, no report on disk — asserted by making every
+  write path raise, and by comparing the repo tree byte-for-byte before
+  and after a run and a served request. `tools/` never calls `log_event`
+  at all (it only READS the sanitised stream through a handler), because
+  `log_event` is fail-loud about forbidden field *names* only — a raw
+  value passed under an innocuous key would sail past it. Pinned by
+  `tests/tools/test_scope.py`.
+- **D11 — Scope containment**: `tools/` is outside the packaged
+  distribution (`[tool.setuptools.packages.find] where = ["src"]`), the
+  dependency is one-way (nothing under `src/` imports `tools`), and the
+  tool imports only the stdlib plus `secure_ai_gateway` — zero new
+  dependencies. It gets ruff, mypy, bandit and the full test suite
+  (CI and the pre-commit hook both extended), but not `pip-audit` or any
+  existing SR; only SR-027 covers it.
+- **D12 — Recorded residuals** (also in the tool's README): ① the
+  browser becomes a raw-data sink — extensions, screenshot/OCR tools,
+  clipboard managers, profile readers; `no-store` prevents caching, it
+  does not sandbox an extension; ② any same-user process can win — the
+  URL is printed to the terminal, so scrollback, `/proc/<pid>/cmdline`,
+  shell history and tmux buffers leak it; ③ loopback is not per-user
+  isolation on Linux, so on a shared host the token is the only barrier;
+  ④ port forwarding (`ssh -L`, dev-container proxies, `GatewayPorts`)
+  defeats the bind and the code cannot enforce it; ⑤ **SR-019 is
+  genuinely relaxed** (see above), not reinterpreted; ⑥ memory is not
+  zeroised and can be paged out — the exposure window is now the whole
+  process lifetime; ⑦ the isolation sweep is evidence, not proof (D7);
+  ⑧ no TLS and no auth beyond the token, so a privileged local sniffer
+  sees everything; ⑨ unbounded in-memory growth, mitigated by
+  `--max-sessions` / `--purge-after`, not eliminated; ⑩
+  `--provider anthropic` sends real data to a real API — the `fake`
+  default mitigates but does not prevent, and synthetic-data-only
+  (SR-014) still applies; ⑪ the blur ("隱藏原始值") toggle is cosmetic
+  and the page says so in its own text.
+- **Also fixed while building this**: `capture_logs()` silently captured
+  nothing under Python's default WARNING root level, because
+  `Logger.log` discards the record at the call site before any handler
+  runs. The recorder now raises the logger's level to INFO for the
+  duration and restores it, and never touches `propagate`.
+- **Dashboard acceptance**: full suite green (753 existing + 258 new =
+  1011, zero existing tests modified — including the four pinned files:
+  tests/security/test_tokens.py, test_m4_response.py,
+  tests/unit/test_pipeline.py, tests/security/test_m5_audit.py);
+  ruff/mypy/bandit clean over `src tools`; end-to-end offline run with
+  `--provider fake` verified over a real socket.
+
+---
+
 ## 2026-08-18 — M6 Persistent Token Store Decisions
 
 **Approval record**: the user approved 2026-08-18 an opt-in encrypted

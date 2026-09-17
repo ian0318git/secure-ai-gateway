@@ -127,7 +127,11 @@ build toolchain required on the machine:
 Deliberately absent: no web framework, no database, no
 `requests`/`httpx` — the LLM call uses stdlib `urllib.request` behind
 an https-only guard (SR-001); tokens come from stdlib `secrets`
-(never sequential). Dev tooling (all `[dev]` extras, enforced by the
+(never sequential). This claim is scoped to the **gateway package**
+(`src/secure_ai_gateway`): the local debug dashboard in `tools/`
+does bring up a loopback HTTP server, built on stdlib `http.server`
+with no third-party web framework and no new dependency (SR-027).
+Dev tooling (all `[dev]` extras, enforced by the
 pre-commit gate and CI): pytest 9.x, ruff, mypy, bandit, pip-audit.
 
 ### 6.1 What each technology does during a run

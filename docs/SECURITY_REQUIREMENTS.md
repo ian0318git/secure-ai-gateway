@@ -318,3 +318,53 @@ protect token mappings at rest and fail closed:
 - the persistent layer is a token_for supplier only: restore() stays
   session-scoped, so a token issued in an earlier session is never
   restored (fail closed, response guard step 1)
+
+---
+
+# SR-027 — Local Debug Dashboard (`tools/dashboard`)
+
+The local debug dashboard is a **development tool, not a security
+control**. It exists to make the gateway's behaviour inspectable
+(stage-by-stage dispositions, and the complete raw → token mapping)
+and it is authorised only under the constraints below.
+
+This requirement **relaxes SR-002 and SR-019 for this tool**, and the
+relaxation is recorded deliberately rather than inferred:
+
+- **SR-002 ("client-side code")** — the dashboard serves token
+  mappings to a browser. Permitted **only** because the page is served
+  over loopback from the operator's own machine and the mappings in
+  question are that same operator's own session data.
+- **SR-019 ("mappings MUST be destroyed at session end")** — the
+  recorder holds a copy that outlives `Session.run`, so a running
+  dashboard's mapping lifetime is the process lifetime. The packaged
+  gateway (`src/secure_ai_gateway`) is unaffected: `vault.clear()`
+  still destroys the real mapping on every path. This is a genuine
+  relaxation of a stated guarantee.
+
+The dashboard MUST:
+
+- bind loopback only (`127.0.0.1`; never a wildcard address)
+- require a per-run 128-bit path token; a missing or wrong token MUST
+  return 404, never 403 (a probe must not confirm the service exists)
+- reject any `Host` outside the loopback allow-list, and any `Origin`
+  that is not its own
+- send no CORS header on any response, including `OPTIONS`
+- send `no-store` on every response and serve GET/HEAD only
+- never write to disk: no dump, cache, report, or exported mapping
+- never call `log_event`; it may only READ the sanitised log stream
+  through a `logging.Handler`
+- keep `payload["report"]` byte-identical to `MetadataReport.to_dict()`,
+  and confine raw values and tokens to the paths declared in
+  `tools/dashboard/model.RAW_OR_TOKEN_PATHS`
+- render with `createElement`/`textContent` only, under a nonce-based
+  CSP, with no external resource of any kind
+- never see provider credentials (it wraps the provider interface, not
+  the transport, so `x-api-key` is unreachable)
+- use synthetic data only (SR-014 applies unchanged)
+
+The tool MUST NOT be treated as a control in any threat-mitigation
+claim. Its documented residuals (browser extensions, terminal
+scrollback, loopback not being per-user isolation, port forwarding, no
+TLS, non-zeroised memory, unbounded growth) are recorded in
+`DECISIONS.md` (2026-09-18, D12) and in the tool's README.

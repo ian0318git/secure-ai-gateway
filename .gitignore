@@ -30,5 +30,13 @@ bench_cache/
 *.vault
 *.vault.tmp
 
+# Debug dashboard (tools/dashboard) — it never writes, but a future
+# edit or a manual dump must not be able to commit a token mapping.
+# Deliberately NOT a blanket *.html: that would silently untrack
+# tools/dashboard/page.html and docs/gateway_example.html.
+tools/dashboard/_dumps/
+*-dashboard.json
+*.mapping.json
+
 # Claude Code local session state
 .claude/

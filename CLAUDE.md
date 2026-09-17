@@ -139,6 +139,14 @@ Implementation begins only after human approval.
 16. The user instruction is protected input, like the document. Raw
     identifiers in the instruction must pass through the same pipeline
     before reaching the LLM.
+17. The local debug dashboard (`tools/dashboard`) is a development
+    tool, NOT a security control, and is the ONLY sanctioned exception
+    to §2's "client-side code" rule and §8's mapping lifetime. It may
+    serve token mappings to a loopback browser because they are the
+    operator's own session data (SR-027, DECISIONS 2026-09-18). The
+    packaged gateway is unchanged. Do NOT cite the dashboard as
+    mitigation for any threat, and do not extend this exception to any
+    other component without a new recorded decision.
 
 ---
 

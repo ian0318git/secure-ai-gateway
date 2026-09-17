@@ -187,6 +187,11 @@ Deliberately absent: no web framework, no database, no `requests`/`httpx`
 (SR-001); tokens come from stdlib `secrets`. Dev tooling: pytest, ruff,
 mypy, bandit, pip-audit, enforced by the pre-commit gate and CI.
 
+("No web framework" is a claim about the **gateway package**. The local
+debug dashboard in `tools/dashboard` serves a page over loopback from
+stdlib `http.server` — still no third-party framework, no new
+dependency, and not part of the packaged distribution. See SR-027.)
+
 ### What each technology does during a run
 
 The same six steps as the worked example, with the technology doing the
@@ -221,10 +226,11 @@ Every step above is pinned by the 753-test suite.
 - `docs/gateway_example.html` — visual walkthrough (open in a browser)
 - `CLAUDE.md` — Claude Code project instructions (security rules, milestone gates)
 - `docs/DESIGN.md` — architecture and design specification
-- `docs/SECURITY_REQUIREMENTS.md` — security requirements (SR-001 … SR-026)
-- `docs/THREAT_MODEL.md` — STRIDE threat model (25 threats)
+- `docs/SECURITY_REQUIREMENTS.md` — security requirements (SR-001 … SR-027)
+- `docs/THREAT_MODEL.md` — STRIDE threat model (27 threats)
 - `docs/POC_PLAN.md` — milestones M0–M6 and acceptance criteria
-- `docs/DECISIONS.md` — decision log (M0/M1/M2/M5/M6)
+- `docs/DECISIONS.md` — decision log (M0/M1/M2/M5/M6 + 2026-09-18 dashboard)
+- `tools/dashboard/README.md` — local debug dashboard (SR-027, dev tool)
 
 ## Decisions (recorded at M0, v0.3)
 

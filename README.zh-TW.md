@@ -164,6 +164,11 @@ export VAULT_MASTER_KEY=$(.venv/bin/python -c \
 stdlib `secrets`。開發工具：pytest、ruff、mypy、bandit、pip-audit，
 由 pre-commit gate 與 CI 強制執行。
 
+（「無 web framework」是就 **gateway 套件** 而言。`tools/dashboard`
+的本機除錯 dashboard 用 stdlib `http.server` 在 loopback 上提供頁面
+——仍然沒有第三方 framework、沒有新增依賴，也不在打包發行的範圍內。
+見 SR-027。）
+
 ### 每個技術在執行時做什麼
 
 同一個六步驟，標出每一步實際做事的技術：
@@ -193,10 +198,11 @@ stdlib `secrets`。開發工具：pytest、ruff、mypy、bandit、pip-audit，
 - `docs/gateway_example.html` — 視覺化運作說明（瀏覽器直接開啟）
 - `CLAUDE.md` — Claude Code 專案指令（安全規則、milestone 關卡）
 - `docs/DESIGN.md` — 架構與設計規格
-- `docs/SECURITY_REQUIREMENTS.md` — 安全需求（SR-001 … SR-026）
+- `docs/SECURITY_REQUIREMENTS.md` — 安全需求（SR-001 … SR-027）
 - `docs/THREAT_MODEL.md` — STRIDE 威脅模型（25 項威脅）
 - `docs/POC_PLAN.md` — M0–M6 milestones 與驗收標準
-- `docs/DECISIONS.md` — 決策紀錄（M0/M1/M2/M5/M6）
+- `docs/DECISIONS.md` — 決策紀錄（M0/M1/M2/M5/M6 + 2026-09-18 dashboard）
+- `tools/dashboard/README.md` — 本機除錯 dashboard（SR-027，開發工具）
 
 ## 決策（M0, v0.3 記錄）
 

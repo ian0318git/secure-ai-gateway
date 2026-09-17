@@ -26,16 +26,16 @@ jobs:
           pip install -e ".[dev]"
 
       - name: ruff
-        run: ruff check src tests scripts
+        run: ruff check src tests scripts tools
 
       - name: mypy
-        run: mypy src
+        run: mypy src tools
 
       - name: bandit
-        run: bandit -q -r src
+        run: bandit -q -r src tools
 
       - name: pip-audit
         run: pip-audit
 
-      - name: pytest (unit + security + fast bench)
+      - name: pytest (unit + security + tools + fast bench)
         run: pytest tests -q

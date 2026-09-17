@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Secure AI Gateway — 本地除錯 Dashboard</title>
+<style nonce="__CSP_NONCE__">
+/* ===== tokens: light palette defined on :root (complete) ===== */
+:root {
+  --ground: #F5F7FA;
+  --surface: #FFFFFF;
+  --surface-2: #EBEEF3;
+  --ink: #1A2230;
+  --ink-2: #3C4A5C;
+  --ink-3: #6B7888;
+  --line: #D8DEE6;
+  --accent: #0E5FD8;
+  --accent-ink: #0A3F8F;
+  --accent-tint: #E3ECFB;
+  --pass: #1F7A4D;
+  --pass-tint: #E4F2EA;
+  --warn: #A86200;
+  --warn-tint: #F7EBDD;
+  --block: #C0392B;
+  --block-tint: #F9E7E4;
+  --token-bg: #E9EDF3;
+  --token-ink: #0A3F8F;
+  --raw-bg: #FDF3E3;
+  --raw-line: #D9A85C;
+  --idle: #98A5B4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0F141B;
+    --surface: #171E28;
+    --surface-2: #1F2834;
+    --ink: #E8EDF4;
+    --ink-2: #B7C2CF;
+    --ink-3: #8593A3;
+    --line: #2A3542;
+    --accent: #6EA8FF;
+    --accent-ink: #A8C9FF;
+    --accent-tint: #1D2A3F;
+    --pass: #55C98B;
+    --pass-tint: #14301F;
+    --warn: #E0A53D;
+    --warn-tint: #33260F;
+    --block: #E56B5A;
+    --block-tint: #331B17;
+    --token-bg: #22314A;
+    --token-ink: #A8C9FF;
+    --raw-bg: #33260F;
+    --raw-line: #E0A53D;
+    --idle: #4A5767;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0F141B;
+  --surface: #171E28;
+  --surface-2: #1F2834;
+  --ink: #E8EDF4;
+  --ink-2: #B7C2CF;
+  --ink-3: #8593A3;
+  --line: #2A3542;
+  --accent: #6EA8FF;
+  --accent-ink: #A8C9FF;
+  --accent-tint: #1D2A3F;
+  --pass: #55C98B;
+  --pass-tint: #14301F;
+  --warn: #E0A53D;
+  --warn-tint: #33260F;
+  --block: #E56B5A;
+  --block-tint: #331B17;
+  --token-bg: #22314A;
+  --token-ink: #A8C9FF;
+  --raw-bg: #33260F;
+  --raw-line: #E0A53D;
+  --idle: #4A5767;
+}
+
+/* ===== base ===== */
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC",
+    "PingFang TC", "Microsoft JhengHei", sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  padding-top: 3.1rem;
+}
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono {
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas,
+    "Noto Sans Mono CJK TC", monospace;
+}
+
+/* ===== fixed debug banner ===== */
+.banner {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 1rem;
+  background: var(--warn-tint);
+  border-bottom: 2px solid var(--warn);
+  color: var(--warn);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.banner .spacer { flex: 1 1 auto; }
+.banner button {
+  font: inherit;
+  font-weight: 600;
+  color: var(--warn);
+  background: var(--surface);
+  border: 1px solid var(--warn);
+  border-radius: 3px;
+  padding: 0.15rem 0.6rem;
+  cursor: pointer;
+}
+.banner .conn { font-weight: 400; color: var(--ink-3); }
+
+/* ===== layout ===== */
+.page { max-width: 1080px; margin: 0 auto; padding: 1.6rem 1.4rem 5rem; }
+section { margin-top: 2.1rem; }
+h1 { font-size: 1.3rem; margin: 0 0 0.2rem; }
+h2 {
+  font-size: 1.02rem;
+  margin: 0 0 0.7rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--line);
+}
+.note { color: var(--ink-3); font-size: 0.85rem; margin: 0.35rem 0 0.8rem; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0.95rem 1.05rem;
+  overflow-x: auto;
+}
+.empty { color: var(--ink-3); font-style: normal; }
+
+/* ===== chips ===== */
+.token {
+  background: var(--token-bg);
+  color: var(--token-ink);
+  border-radius: 3px;
+  padding: 0.05em 0.4em;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.86em;
+  white-space: nowrap;
+}
+.raw {
+  background: var(--raw-bg);
+  border-bottom: 1px solid var(--raw-line);
+  border-radius: 2px 2px 0 0;
+  padding: 0.05em 0.3em;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.86em;
+}
+.tag {
+  display: inline-block;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--idle);
+  color: var(--ink-2);
+  border-radius: 2px;
+  padding: 0.02em 0.45em;
+  white-space: nowrap;
+}
+.tag.pass { border-color: var(--pass); color: var(--pass); }
+.tag.block { border-color: var(--block); color: var(--block); }
+.tag.warn { border-color: var(--warn); color: var(--warn); }
+
+/* ===== blur toggle (cosmetic) ===== */
+body.hide-raw .raw, body.hide-raw .raw-cell { filter: blur(5px); }
+body.hide-raw .raw-cell * { filter: blur(5px); }
+
+/* ===== stage rail ===== */
+.rail { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0; padding: 0;
+        list-style: none; }
+.rail li {
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: 3px;
+  background: var(--surface);
+  padding: 0.3rem 0.6rem;
+  font-size: 0.82rem;
+  color: var(--ink-3);
+}
+.rail li.running { border-left-color: var(--accent); color: var(--accent-ink);
+                   background: var(--accent-tint); }
+.rail li.done { border-left-color: var(--pass); color: var(--ink); }
+.rail li.failed { border-left-color: var(--block); color: var(--block);
+                  background: var(--block-tint); }
+
+/* ===== tables ===== */
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+th, td {
+  border: 1px solid var(--line);
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: var(--surface-2); font-weight: 600; white-space: nowrap; }
+td.num { font-variant-numeric: tabular-nums; color: var(--ink-3); }
+tbody tr.hit { background: var(--raw-bg); }
+.map-arrow { color: var(--accent); padding: 0 0.4rem; }
+
+pre {
+  margin: 0;
+  padding: 0.7rem 0.8rem;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+details { margin-top: 0.7rem; }
+summary { cursor: pointer; color: var(--ink-2); font-size: 0.85rem; }
+dl.kv { display: grid; grid-template-columns: max-content 1fr;
+        gap: 0.15rem 0.9rem; margin: 0; font-size: 0.85rem; }
+dl.kv dt { color: var(--ink-3); }
+dl.kv dd { margin: 0; }
+select {
+  font: inherit;
+  padding: 0.2rem 0.4rem;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+.status {
+  display: inline-block;
+  border-radius: 3px;
+  padding: 0.05em 0.5em;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid var(--idle);
+  color: var(--ink-2);
+}
+.status.delivered { border-color: var(--pass); color: var(--pass);
+                    background: var(--pass-tint); }
+.status.blocked, .status.error { border-color: var(--block); color: var(--block);
+                                 background: var(--block-tint); }
+.status.running { border-color: var(--accent); color: var(--accent-ink);
+                  background: var(--accent-tint); }
+</style>
+</head>
+<body>
+
+<div class="banner">
+  <span>DEBUG — 原始值可見</span>
+  <span class="conn mono" id="conn">連線中…</span>
+  <span class="spacer"></span>
+  <button type="button" id="toggle-raw">隱藏原始值</button>
+  <button type="button" id="toggle-theme">切換深色</button>
+</div>
+
+<div class="page">
+  <h1>Secure AI Gateway — 本地除錯 Dashboard</h1>
+  <p class="note">
+    這是除錯工具，不是資安控制項。本頁刻意顯示原始值與完整
+    token 對照表，僅供本機使用；只可使用合成資料（SR-014）。
+    「隱藏原始值」只做視覺模糊，資料仍在本頁與瀏覽器記憶體中，
+    不構成保護，也不能取代關閉分享畫面。
+  </p>
+
+  <section>
+    <h2>Session</h2>
+    <div class="card">
+      <div id="session-head"><span class="empty">尚無 session。</span></div>
+      <div id="session-pick"></div>
+      <ul class="rail" id="rail"></ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>1. 輸入文件與偵測結果</h2>
+    <p class="note">
+      每一格（cell）的原始值、偵測到的實體、以及政策引擎給的處置。
+    </p>
+    <div class="card"><div id="cells"><span class="empty">—</span></div></div>
+  </section>
+
+  <section>
+    <h2>2. Token 對照表（原始值 → 代號）</h2>
+    <p class="note">
+      這張表就是「什麼關鍵被換成什麼」。左邊是原始值，右邊是本
+      session 發出的代號；最後一欄是它在文件裡出現的位置。
+    </p>
+    <div class="card"><div id="mapping"><span class="empty">—</span></div></div>
+  </section>
+
+  <section>
+    <h2>3. 使用者指示（原始 vs 保護後）</h2>
+    <div class="card"><div id="instruction"><span class="empty">—</span></div></div>
+  </section>
+
+  <section>
+    <h2>4. 送往 LLM 的完整內容</h2>
+    <p class="note">
+      這是 provider 實際收到的內容。理論上只會出現代號，不應出現
+      任何原始值——可以拿這一段自行核對。
+    </p>
+    <div class="card"><div id="wire"><span class="empty">—</span></div></div>
+  </section>
+
+  <section>
+    <h2>5. LLM 原始回應</h2>
+    <div class="card"><div id="response"><span class="empty">—</span></div></div>
+  </section>
+
+  <section>
+    <h2>6. 還原後輸出 / 阻擋原因</h2>
+    <div class="card"><div id="outcome"><span class="empty">—</span></div></div>
+  </section>
+
+  <section>
+    <h2>7. 審計事件（已去識別化的 log）</h2>
+    <p class="note">
+      這是 <span class="mono">log_event</span> 實際寫出的內容；原始值
+      與對照表都不會出現在這裡。
+    </p>
+    <div class="card"><div id="audit"><span class="empty">—</span></div></div>
+  </section>
+
+  <section>
+    <h2>8. 完整報告</h2>
+    <div class="card"><div id="report"><span class="empty">—</span></div></div>
+  </section>
+</div>
+
+<script nonce="__CSP_NONCE__">
+"use strict";
+
+/* Token shape issued by src/secure_ai_gateway/tokenisation/vault.py —
+   <PREFIX>_<8 lowercase hex>. Mirrored here only for highlighting; the
+   server never relies on the client for anything. */
+var TOKEN_RE = /[A-Z][A-Z0-9]*_[0-9a-f]{8}/g;
+var STAGES = ["parse", "detect", "policy", "minimise", "tokenise",
+              "provider", "response"];
+var STAGE_LABELS = {
+  parse: "解析檔案", detect: "偵測敏感內容", policy: "政策引擎",
+  minimise: "最小化", tokenise: "換代號", provider: "送往 LLM",
+  response: "回應檢查與還原"
+};
+
+var pinnedId = null;      /* user-chosen session, or null = follow live */
+var lastRevision = -1;
+var lastCurrentId = null;
+
+/* ---- DOM helpers: createElement + textContent ONLY ----
+   Cell values are untrusted document content (CLAUDE.md §6.6). This
+   page must never build HTML from a string. */
+function el(tag, cls, text) {
+  var node = document.createElement(tag);
+  if (cls) { node.className = cls; }
+  if (text !== undefined && text !== null) {
+    node.textContent = String(text);
+  }
+  return node;
+}
+function clear(node) { node.replaceChildren(); }
+function frag() { return document.createDocumentFragment(); }
+function code(text) { return el("span", "mono", text); }
+
+/* Split text on TOKEN_RE and mark the matches. No string-built HTML. */
+function appendHighlighted(parent, text) {
+  var source = String(text === null || text === undefined ? "" : text);
+  var index = 0;
+  var match;
+  TOKEN_RE.lastIndex = 0;
+  while ((match = TOKEN_RE.exec(source)) !== null) {
+    if (match.index > index) {
+      parent.appendChild(document.createTextNode(source.slice(index, match.index)));
+    }
+    parent.appendChild(el("span", "token", match[0]));
+    index = match.index + match[0].length;
+    if (match[0].length === 0) { TOKEN_RE.lastIndex += 1; }
+  }
+  if (index < source.length) {
+    parent.appendChild(document.createTextNode(source.slice(index)));
+  }
+}
+
+function keyValue(parent, pairs) {
+  var dl = el("dl", "kv");
+  pairs.forEach(function (pair) {
+    if (pair[1] === null || pair[1] === undefined) { return; }
+    dl.appendChild(el("dt", null, pair[0]));
+    dl.appendChild(el("dd", null, pair[1]));
+  });
+  parent.appendChild(dl);
+}
+
+function show(container, message) {
+  clear(container);
+  container.appendChild(el("span", "empty", message));
+}
+
+/* ---- rendering ---- */
+
+function renderSessions(sessions, currentId) {
+  var head = document.getElementById("session-head");
+  clear(head);
+  var current = null;
+  sessions.forEach(function (s) { if (s.request_id === currentId) { current = s; } });
+  if (!current) {
+    head.appendChild(el("span", "empty", "尚無 session。"));
+    return;
+  }
+  var line = el("div");
+  line.appendChild(el("span", "mono", current.request_id));
+  line.appendChild(document.createTextNode("  "));
+  var badge = el("span", "status " + current.status, current.status);
+  line.appendChild(badge);
+  if (current.status_reason) {
+    line.appendChild(document.createTextNode("  "));
+    line.appendChild(code(current.status_reason));
+  }
+  head.appendChild(line);
+
+  var pick = document.getElementById("session-pick");
+  clear(pick);
+  if (sessions.length > 1) {
+    var label = el("label", null, "顯示 session：");
+    var select = document.createElement("select");
+    sessions.forEach(function (s) {
+      var option = document.createElement("option");
+      option.value = s.request_id;
+      option.textContent = s.request_id + " — " + s.status +
+        (s.source ? " — " + s.source : "");
+      if (s.request_id === (pinnedId || currentId)) {
+        option.selected = true;
+      }
+      select.appendChild(option);
+    });
+    select.addEventListener("change", function () {
+      pinnedId = select.value;
+      renderCurrent();
+    });
+    label.appendChild(select);
+    pick.appendChild(label);
+  }
+}
+
+function renderRail(state) {
+  var rail = document.getElementById("rail");
+  clear(rail);
+  var byId = {};
+  (state.stages || []).forEach(function (s) { byId[s.id] = s; });
+  STAGES.forEach(function (id) {
+    var record = byId[id] || { status: "pending" };
+    var item = el("li", record.status);
+    item.appendChild(el("span", null, STAGE_LABELS[id] || id));
+    item.appendChild(document.createTextNode(" "));
+    item.appendChild(el("span", "mono", record.status));
+    rail.appendChild(item);
+  });
+}
+
+function renderCells(payload) {
+  var host = document.getElementById("cells");
+  var cells = payload.cells || [];
+  if (!cells.length) {
+    show(host, "沒有保留任何 cell（可能被政策全數丟棄或直接阻擋）。");
+    return;
+  }
+  var table = el("table");
+  var head = el("tr");
+  ["cell_id", "欄位", "列", "原始值", "偵測到的實體", "處置"].forEach(function (h) {
+    head.appendChild(el("th", null, h));
+  });
+  table.appendChild(el("thead")).appendChild(head);
+  var body = el("tbody");
+  cells.forEach(function (cell) {
+    var row = el("tr");
+    if ((cell.spans || []).length) { row.className = "hit"; }
+    row.appendChild(el("td", "mono", cell.cell_id));
+    row.appendChild(el("td", null, cell.column));
+    row.appendChild(el("td", "num", cell.row));
+    var rawTd = el("td", "raw-cell");
+    rawTd.appendChild(el("span", "raw", cell.value));
+    row.appendChild(rawTd);
+    var spanTd = el("td");
+    if (!(cell.spans || []).length) {
+      spanTd.appendChild(el("span", "empty", "—"));
+    }
+    (cell.spans || []).forEach(function (span, i) {
+      if (i) { spanTd.appendChild(document.createTextNode(" ")); }
+      spanTd.appendChild(el("span", "tag", span.entity_type));
+      spanTd.appendChild(document.createTextNode(" "));
+      spanTd.appendChild(el("span", "raw", span.raw));
+      spanTd.appendChild(el("span", "mono", " [" + span.source + " " +
+        span.score.toFixed(2) + "]"));
+    });
+    row.appendChild(spanTd);
+    var dispTd = el("td");
+    dispTd.appendChild(el("span", "tag " + dispositionClass(cell.disposition),
+      cell.disposition || "—"));
+    if (cell.reason) {
+      dispTd.appendChild(document.createTextNode(" "));
+      dispTd.appendChild(el("span", "mono", cell.reason));
+    }
+    if (cell.value_protected && cell.value_protected !== cell.value) {
+      dispTd.appendChild(el("div"));
+      dispTd.appendChild(el("span", "mono", "→ "));
+      var out = el("span");
+      appendHighlighted(out, cell.value_protected);
+      dispTd.appendChild(out);
+    }
+    row.appendChild(dispTd);
+    body.appendChild(row);
+  });
+  table.appendChild(body);
+  clear(host);
+  host.appendChild(table);
+}
+
+function dispositionClass(disposition) {
+  if (disposition === "tokenise" || disposition === "tokenize") { return "warn"; }
+  if (disposition === "block") { return "block"; }
+  if (disposition === "allow") { return "pass"; }
+  return "";
+}
+
+function renderMapping(payload) {
+  var host = document.getElementById("mapping");
+  var mapping = payload.mapping || [];
+  if (!mapping.length) {
+    show(host, "這個 session 沒有發出任何代號（沒有需要保護的實體）。");
+    return;
+  }
+  var table = el("table");
+  var head = el("tr");
+  ["實體類型", "原始值", "", "代號", "出現位置"].forEach(function (h) {
+    head.appendChild(el("th", null, h));
+  });
+  table.appendChild(el("thead")).appendChild(head);
+  var body = el("tbody");
+  mapping.forEach(function (entry) {
+    var row = el("tr");
+    row.appendChild(el("td", null, entry.entity_type));
+    var rawTd = el("td", "raw-cell");
+    rawTd.appendChild(el("span", "raw", entry.raw));
+    row.appendChild(rawTd);
+    row.appendChild(el("td", "map-arrow", "→"));
+    var tokenTd = el("td");
+    tokenTd.appendChild(el("span", "token", entry.token));
+    row.appendChild(tokenTd);
+    var occTd = el("td", "mono");
+    if (!(entry.occurrences || []).length) {
+      occTd.appendChild(el("span", "empty", "（指示中）"));
+    }
+    (entry.occurrences || []).forEach(function (occ, i) {
+      if (i) { occTd.appendChild(document.createTextNode("、")); }
+      occTd.appendChild(document.createTextNode(
+        occ.cell_id + " " + occ.column + "#" + occ.row +
+        " [" + occ.start + "," + occ.end + ")"));
+    });
+    row.appendChild(occTd);
+    body.appendChild(row);
+  });
+  table.appendChild(body);
+  clear(host);
+  host.appendChild(table);
+}
+
+function renderInstruction(payload) {
+  var host = document.getElementById("instruction");
+  var instruction = payload.instruction || {};
+  clear(host);
+  if (!instruction.text && !instruction.protected) {
+    show(host, "這個 session 沒有帶指示（--instruction 未指定）。");
+    return;
+  }
+  keyValue(host, [["原始指示", instruction.text]]);
+  var protectedLine = el("div");
+  appendHighlighted(protectedLine, instruction.protected === null ||
+    instruction.protected === undefined ? "（未保護）" : instruction.protected);
+  var dl = el("dl", "kv");
+  dl.appendChild(el("dt", null, "保護後"));
+  var dd = el("dd");
+  dd.appendChild(protectedLine);
+  dl.appendChild(dd);
+  host.appendChild(dl);
+  if ((instruction.spans || []).length) {
+    var spans = el("div", "note");
+    spans.appendChild(document.createTextNode("指示中偵測到："));
+    instruction.spans.forEach(function (span) {
+      spans.appendChild(el("span", "tag", span.entity_type));
+      spans.appendChild(document.createTextNode(" "));
+      spans.appendChild(el("span", "raw", span.raw));
+      spans.appendChild(document.createTextNode(" "));
+    });
+    host.appendChild(spans);
+  }
+}
+
+function renderWire(payload) {
+  var host = document.getElementById("wire");
+  var wire = payload.payload;
+  clear(host);
+  if (!wire) {
+    show(host, "沒有送出請求（在 provider 之前就被阻擋）。");
+    return;
+  }
+  keyValue(host, [
+    ["model", wire.model],
+    ["max_tokens", wire.max_tokens],
+    ["system", wire.system],
+    ["位元組數", wire.chars]
+  ]);
+  var pre = el("pre");
+  appendHighlighted(pre, JSON.stringify(wire.body, null, 2));
+  host.appendChild(pre);
+}
+
+function renderResponse(payload) {
+  var host = document.getElementById("response");
+  var response = payload.response;
+  clear(host);
+  if (!response) {
+    show(host, "沒有回應（provider 沒有被呼叫，或呼叫失敗）。");
+    return;
+  }
+  keyValue(host, [["stop_reason", response.stop_reason]]);
+  var pre = el("pre");
+  appendHighlighted(pre, response.raw_text);
+  host.appendChild(pre);
+}
+
+function renderOutcome(payload) {
+  var host = document.getElementById("outcome");
+  var outcome = payload.outcome;
+  clear(host);
+  if (!outcome) {
+    show(host, "尚未結束。");
+    return;
+  }
+  keyValue(host, [
+    ["是否交付", outcome.delivered ? "是（已還原）" : "否（fail closed）"],
+    ["原因", outcome.reason]
+  ]);
+  if (outcome.restored_text) {
+    var pre = el("pre");
+    pre.appendChild(document.createTextNode(outcome.restored_text));
+    host.appendChild(pre);
+  } else {
+    host.appendChild(el("p", "note",
+      "原始回應未交付，因此沒有還原後的輸出——這是 fail-closed 的預期行為。"));
+  }
+  if (payload.error) {
+    host.appendChild(el("p", "note", "錯誤：" + payload.error));
+  }
+}
+
+function renderAudit(payload) {
+  var host = document.getElementById("audit");
+  var audit = payload.audit || [];
+  clear(host);
+  if (!audit.length) {
+    show(host, "沒有補捉到審計事件。");
+    return;
+  }
+  var pre = el("pre");
+  audit.forEach(function (event) {
+    pre.appendChild(el("span", "tag " +
+      (event.level === "ERROR" ? "block" : "pass"), event.level));
+    pre.appendChild(document.createTextNode(" " + event.event + "\n"));
+  });
+  host.appendChild(pre);
+}
+
+function renderReport(payload) {
+  var host = document.getElementById("report");
+  clear(host);
+  if (!payload.report) {
+    show(host, "尚未產生報告。");
+    return;
+  }
+  var source = payload.source || {};
+  keyValue(host, [
+    ["來源", source.name], ["格式", source.format],
+    ["編碼", source.encoding], ["列數", source.rows],
+    ["格子數", source.cells], ["預估 tokens", source.estimated_tokens],
+    ["公式中和格數", source.neutralised_formula_cells]
+  ]);
+  if (payload.report_markdown) {
+    var details = el("details");
+    details.appendChild(el("summary", null, "Markdown 報告"));
+    var pre = el("pre");
+    pre.textContent = payload.report_markdown;
+    details.appendChild(pre);
+    host.appendChild(details);
+  }
+  var jsonDetails = el("details");
+  jsonDetails.appendChild(el("summary", null, "MetadataReport.to_dict()"));
+  var jsonPre = el("pre");
+  jsonPre.textContent = JSON.stringify(payload.report, null, 2);
+  jsonDetails.appendChild(jsonPre);
+  host.appendChild(jsonDetails);
+}
+
+function renderSession(payload) {
+  renderCells(payload);
+  renderMapping(payload);
+  renderInstruction(payload);
+  renderWire(payload);
+  renderResponse(payload);
+  renderOutcome(payload);
+  renderAudit(payload);
+  renderReport(payload);
+}
+
+/* ---- polling ---- */
+
+var lastState = null;
+
+function renderCurrent() {
+  var target = pinnedId || lastCurrentId;
+  if (!target) { return; }
+  fetch("api/session/" + encodeURIComponent(target), { cache: "no-store" })
+    .then(function (res) { return res.ok ? res.json() : null; })
+    .then(function (payload) {
+      if (payload) { renderSession(payload); }
+    })
+    .catch(function () { /* transient; the next tick retries */ });
+}
+
+function setConn(ok) {
+  var node = document.getElementById("conn");
+  node.textContent = ok ? "已連線 · 每秒更新" : "連線中斷（伺服器已關閉？）";
+}
+
+function tick() {
+  fetch("api/state", { cache: "no-store" })
+    .then(function (res) { return res.json(); })
+    .then(function (envelope) {
+      setConn(true);
+      lastState = envelope;
+      var currentId = envelope.current ? envelope.current.request_id : null;
+      if (currentId !== lastCurrentId) {
+        /* A new run started — stop pinning the previous one. */
+        pinnedId = null;
+        lastCurrentId = currentId;
+      }
+      renderSessions(envelope.sessions || [], currentId);
+      if (envelope.current) { renderRail(envelope.current); }
+      if (envelope.revision !== lastRevision) {
+        lastRevision = envelope.revision;
+        renderCurrent();
+      }
+    })
+    .catch(function () { setConn(false); });
+}
+
+/* ---- controls ---- */
+
+document.getElementById("toggle-raw").addEventListener("click", function () {
+  var hidden = document.body.classList.toggle("hide-raw");
+  this.textContent = hidden ? "顯示原始值" : "隱藏原始值";
+  /* Cosmetic only: the values are still in the DOM and the JSON API.
+     Documented as such so nobody mistakes it for a control. */
+});
+
+document.getElementById("toggle-theme").addEventListener("click", function () {
+  var root = document.documentElement;
+  var dark = root.getAttribute("data-theme") === "dark";
+  root.setAttribute("data-theme", dark ? "light" : "dark");
+  this.textContent = dark ? "切換深色" : "切換淺色";
+});
+
+tick();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>

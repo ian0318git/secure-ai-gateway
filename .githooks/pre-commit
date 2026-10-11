@@ -5,6 +5,7 @@
 #
 # Enable per clone:  git config core.hooksPath .githooks
 # Requires the dev tools:  uv pip install -e '.[dev]'
+#                         and: scripts/install-gitleaks.sh
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
@@ -20,7 +21,30 @@ if git diff --cached --name-only --diff-filter=ACMR \
     exit 1
 fi
 
-# --- 2. Anything Python-ish gets the full gate.
+# --- 2. Secret scan (CLAUDE.md §3).
+#
+# Runs BEFORE the "no Python staged" early exit below, deliberately: a
+# credential can land in any file type — .env, .json, .yaml, a notebook,
+# a Markdown doc — and gating this behind '*.py' would leave the most
+# likely carriers unscanned.
+#
+# It also runs first among the checks because it is the cheapest and the
+# most severe: a leaked key is not a lint failure, and finding it in
+# milliseconds beats finding it after a 40-second test run.
+#
+# A Google-key-shaped fixture sat in tests/unit/test_recognizers.py for
+# two months and survived the move to a public repository. Nothing in
+# this gate was looking for it: ruff, mypy, bandit and pytest each cover
+# a different class, and bandit is deliberately not run over tests/.
+if [ ! -x "$VENV/gitleaks" ]; then
+    echo "pre-commit: $VENV/gitleaks missing — run:" \
+         "scripts/install-gitleaks.sh" >&2
+    exit 1
+fi
+echo "pre-commit: gitleaks (staged)"
+"$VENV/gitleaks" git --staged --redact --no-banner --config .gitleaks.toml
+
+# --- 3. Anything Python-ish gets the full gate.
 #
 # The set that DECIDES whether to run is wider than the set that gets
 # LINTED.  Keying only on '*.py' left a hole: staging just
@@ -38,7 +62,7 @@ if [ ! -x "$VENV/ruff" ]; then
     exit 1
 fi
 
-# --- 3. Ruff on the staged Python files only ($PY_FILES can be empty
+# --- 4. Ruff on the staged Python files only ($PY_FILES can be empty
 # when only a non-.py file under tools/ was staged — ruff must not be
 # handed page.html).
 if [ -n "$PY_FILES" ]; then
@@ -49,7 +73,7 @@ else
     echo "pre-commit: ruff — no .py staged, skipped"
 fi
 
-# --- 4. Bandit on staged src/tools files (tests carry deliberate decoys).
+# --- 5. Bandit on staged src/tools files (tests carry deliberate decoys).
 SRC_FILES=$(printf '%s\n' "$PY_FILES" | grep -E '^(src|tools)/' || true)
 if [ -n "$SRC_FILES" ]; then
     echo "pre-commit: bandit"
@@ -57,11 +81,11 @@ if [ -n "$SRC_FILES" ]; then
     "$VENV/bandit" -q $SRC_FILES
 fi
 
-# --- 5. Mypy on the whole src + tools surface (cross-file contracts).
+# --- 6. Mypy on the whole src + tools surface (cross-file contracts).
 echo "pre-commit: mypy"
 "$VENV/mypy" src tools
 
-# --- 6. Full test suite (unit + security + tools).
+# --- 7. Full test suite (unit + security + tools).
 echo "pre-commit: pytest"
 "$VENV/python" -m pytest tests -q
 

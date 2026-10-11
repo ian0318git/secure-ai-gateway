@@ -1,0 +1,175 @@
+# gitleaks configuration — secret scanning for this repository.
+#
+# Why this file exists
+# -------------------
+# The gate used to run ruff, mypy, bandit and pytest. Each of those
+# covers a different class of defect; none of them covers "there is a
+# credential in this text", and bandit is deliberately not run over
+# tests/ (the tests carry decoys on purpose). A Google-key-shaped
+# fixture that could not be proved fake sat in a test file for two
+# months and survived the move to a public repository. It was only
+# caught by hand. See CLAUDE.md §3 and §8.
+#
+# Design rule for allowlists
+# --------------------------
+# An allowlist is always scoped to an exact synthetic VALUE, never to a
+# path or a directory. Allowing `tests/` wholesale would recreate
+# exactly the hole this file exists to close: a real key pasted into a
+# test would sail through. When a new credential-shaped fixture is
+# added, gitleaks WILL fail the commit — that is the intended
+# behaviour. Either make the fixture self-evidently fake (preferred),
+# or add a scoped entry below with a comment saying why it is safe.
+
+[extend]
+useDefault = true
+
+# ---------------------------------------------------------------------
+# 0. Credential-shaped literals, at THIS project's thresholds
+# ---------------------------------------------------------------------
+# gitleaks' built-in rules match the provider's EXACT format. That is
+# the right default for a general codebase — it keeps false positives
+# near zero — and it is the wrong default here. The incident proves it:
+# the fixture that leaked was 38 characters where a real Google key is
+# 39, so `gcp-api-key` never fired. Verified, not assumed: restoring
+# that exact value to the tree and running gitleaks reports
+# "no leaks found".
+#
+# This repository is a secret detector, so its tests are SUPPOSED to be
+# full of credential-shaped strings — and the dangerous ones are
+# exactly the ones a character or two off a real format, because that
+# is what a hand-written fixture looks like. gitleaks' strict rules are
+# blind to that whole class.
+#
+# So we scan at the same loose thresholds the gateway itself uses (see
+# src/secure_ai_gateway/detection/recognizers.py, `_API_KEY_RE`):
+# prefix + minimum length, regardless of the provider-exact shape.
+#
+# The cost is real and accepted: any new credential-shaped fixture
+# trips this rule and must be allowlisted by exact value below. That
+# friction is the point — it forces a human to look at the value and
+# decide whether it is synthetic.
+#
+# GOTCHA — gitleaks compiles rules with RE2, not PCRE. Lookarounds are
+# NOT supported, and a rule containing one does not fail gracefully:
+# gitleaks panics with "bad perl operator: `(?<!`" and a Go stack
+# trace. The gateway's own `_API_KEY_RE` uses `(?<![A-Za-z0-9_])` and
+# `(?![A-Za-z0-9_])` word-boundary guards; they had to be dropped here.
+# Dropping them means a match inside a longer alphanumeric run is
+# reported where Python would not have — acceptable for a scanner
+# (over-reporting is survivable, under-reporting is not).
+[[rules]]
+id = "credential-shaped-literal"
+description = "credential-shaped literal below the provider's exact format"
+regex = '''(?i)(?:sk-ant-[A-Za-z0-9_-]{16,}|sk-[A-Za-z0-9_-]{16,}|AIza[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{20,}|AKIA[A-Z0-9]{12,}|xox[baprs]-[A-Za-z0-9-]{10,})'''
+tags = ["key", "credential"]
+
+# ---------------------------------------------------------------------
+# 1. Build artefacts and caches
+# ---------------------------------------------------------------------
+# None of this is repository content: .gitignore already excludes it, so
+# it can never be committed or shipped. Scanning it produces noise, and
+# noise is how a scanner gets ignored.
+[[allowlists]]
+description = "build artefacts, caches and virtualenvs — never repository content"
+paths = [
+  '''(^|/)__pycache__/''',
+  '''\.py[co]$''',
+  '''(^|/)\.pytest_cache/''',
+  '''(^|/)\.mypy_cache/''',
+  '''(^|/)\.ruff_cache/''',
+  '''(^|/)\.venv/''',
+  '''(^|/)bench_cache/''',
+]
+
+# ---------------------------------------------------------------------
+# 2. Synthetic fixtures in tests/unit/test_recognizers.py
+# ---------------------------------------------------------------------
+# This file exists to prove the private-key recogniser fires. Its
+# fixtures MUST look like PEM blocks — that is the whole point — so
+# they cannot be made unrecognisable. Both bodies are truncated on
+# purpose and carry no key material:
+#
+#   * the PKCS#8 case decodes to a 37-byte header (no key follows);
+#   * the RSA case is a literal `AAAA` placeholder.
+#
+# Scoped to the exact fixture text AND to the private-key rule, so a
+# real PEM pasted into this file is still reported.
+[[allowlists]]
+description = "truncated PEM fixtures for the private-key recogniser — no key material"
+# AND, not the default OR. With OR, `paths` + `targetRules` alone were
+# enough to allow the finding and the regexes were never consulted —
+# which silently allowlisted every private key in this file. Verified
+# by pasting a real-shaped PEM into the file and watching it pass.
+condition = "AND"
+paths = ['''tests/unit/test_recognizers\.py$''']
+targetRules = ["private-key"]
+regexTarget = "match"
+regexes = [
+  # PKCS#8 case: the truncated body, verbatim from the fixture.
+  '''MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQ''',
+  # RSA case: BEGIN marker immediately followed by the AAAA placeholder.
+  # The literal backslash-n is what the source file contains, not a
+  # newline — see the fixture, which is a Python string with escapes.
+  '''BEGIN RSA PRIVATE KEY-----\\nAAAA''',
+]
+
+# ---------------------------------------------------------------------
+# 3. Synthetic credential-shaped literals
+# ---------------------------------------------------------------------
+# Every entry is pinned to the EXACT value (anchored `^...$`), never to
+# a file. If any of these values is edited, or a new credential-shaped
+# fixture is added anywhere — including inside a file already listed
+# above — the scan fails the commit and a human has to look at it.
+#
+# Convention for new fixtures (CLAUDE.md §3): prefer a value that is
+# self-evidently fake so it needs no entry here at all. `AKIA…EXAMPLE`
+# (AWS's own documentation form) and `xoxb-1234…-abcdefghijkl` are the
+# models. Only reach for an allowlist entry when the fixture genuinely
+# has to look real for the test to mean anything — the PEM blocks and
+# the recogniser positives are the honest examples.
+[[allowlists]]
+description = "synthetic credential-shaped literals used by tests — not real credentials"
+regexTarget = "secret"
+regexes = [
+  # --- tests/unit/test_recognizers.py — recogniser positives --------
+  # Each is a deliberate decoy that the API-key recogniser must fire on.
+  '''^sk-aB3dEfGhIjKlMnOpQrStUvWxYz0123456789abcdef$''',
+  '''^AIzaSyEXAMPLEKEYabcdefghijklmnopqrst$''',
+  '''^ghp_M9O1kSGgc7oJ68nQuPFL3r94JIy9h6rbK$''',
+  '''^AKIAIOSFODNN7EXAMPLE$''',
+  '''^xoxb-123456789012-abcdefghijkl$''',
+  # SecretRecognizerZh positive: "api_key : sk-abcdefgh12345678".
+  '''^sk-abcdefgh12345678$''',
+
+  # --- tests/unit/test_policy.py ------------------------------------
+  # Block-the-whole-request positive for the policy engine.
+  '''^sk-abcdefghijklmnop1234$''',
+
+  # --- tests/security/test_m3_llm.py --------------------------------
+  # Stand-in secret proving it never reaches the provider payload.
+  '''^sk-super-secret-value$''',
+
+  # --- tests/tools/test_server_security.py --------------------------
+  # PATH_TOKEN = "0123456789abcdef" * 2 — fixed so request construction
+  # is deterministic; the "token never reaches a terminal" test needs a
+  # literal to search for. See the comment above it in that file.
+  '''^0123456789abcdef0123456789abcdef$''',
+
+  # --- HISTORY ONLY: the value that started all of this --------------
+  # Committed 2026-08-16 in 45d5839 as an API-key recogniser positive,
+  # replaced 2026-10-11 in 8cf2205, and still reachable in every commit
+  # in between — which is why the CI job scans full history rather than
+  # just the tip.
+  #
+  # Proven NOT to be a live credential before this entry was added, by
+  # querying four independent Google APIs. All four returned
+  # `API_KEY_INVALID` ("API key not valid"), which is the response for
+  # a key that does not exist — as opposed to `SERVICE_DISABLED` or
+  # `PERMISSION_DENIED`, which is what an existing-but-restricted key
+  # returns. Corroborated by length: 38 characters, where a real Google
+  # key is 39. Nothing to revoke; there was never a key.
+  #
+  # Kept here rather than assumed harmless, so the reason is on the
+  # record next to the value.
+  '''^AIzaSyBw2t1nwPcR0XvLmQqKjHfGdSaZoEuxcY$''',
+]

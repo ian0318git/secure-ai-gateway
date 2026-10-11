@@ -1,8 +1,8 @@
 name: lint-and-test
 
 # Mirrors the local pre-commit gate (.githooks/pre-commit) on the
-# server side: ruff, mypy, bandit, dependency audit, full test suite.
-# Fail closed — any check failing reds the run.
+# server side: gitleaks, ruff, mypy, bandit, dependency audit, full
+# test suite. Fail closed — any check failing reds the run.
 
 on:
   push:
@@ -10,6 +10,30 @@ on:
   pull_request:
 
 jobs:
+  # Runs on its own, and first, because it needs none of the Python
+  # setup: no venv, no 575MB spaCy model. A secret scan takes about a
+  # second, so there is no reason to make it wait behind an install.
+  #
+  # Scans FULL HISTORY, not just the tip: a credential that was
+  # committed and later removed is still leaked — the blob stays
+  # reachable in the pack and `git log -S` finds it. HEAD-only scanning
+  # would report "clean" on exactly the repositories that have a
+  # problem.
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install gitleaks (pinned + checksum-verified)
+        run: scripts/install-gitleaks.sh "$RUNNER_TEMP/bin"
+
+      - name: gitleaks (full history)
+        run: >-
+          "$RUNNER_TEMP/bin/gitleaks" git --redact --no-banner
+          --config .gitleaks.toml
+
   gate:
     runs-on: ubuntu-latest
     steps:

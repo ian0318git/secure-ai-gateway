@@ -15,11 +15,28 @@
 #         Defaults to .venv/bin (where the pre-commit gate looks for it).
 #         CI passes a temp dir, since there is no venv there.
 #         GITLEAKS_VERSION overrides the pinned version.
+#
+# The two cases are handled differently on purpose. An explicit DEST_DIR
+# is created if it is missing — that is the caller saying "put it here",
+# and CI's $RUNNER_TEMP/bin does not exist until someone makes it.
+# The default is NOT created: if .venv is missing, the venv is missing,
+# and quietly building .venv/bin around it would hide that.
 
 set -euo pipefail
 
 VERSION="${GITLEAKS_VERSION:-8.30.1}"
-DEST="${1:-$(git rev-parse --show-toplevel)/.venv/bin}"
+
+if [ $# -ge 1 ]; then
+    DEST="$1"
+    mkdir -p "$DEST"
+else
+    DEST="$(git rev-parse --show-toplevel)/.venv/bin"
+    if [ ! -d "$DEST" ]; then
+        echo "install-gitleaks: $DEST does not exist — create the venv first:" \
+             "uv pip install -e '.[dev]'" >&2
+        exit 1
+    fi
+fi
 
 case "$(uname -m)" in
     x86_64)          ARCH="x64" ;;
@@ -32,11 +49,6 @@ case "$(uname -s)" in
     Darwin) OS="darwin" ;;
     *) echo "install-gitleaks: unsupported OS $(uname -s)" >&2; exit 1 ;;
 esac
-
-if [ ! -d "$DEST" ]; then
-    echo "install-gitleaks: $DEST does not exist — create it first" >&2
-    exit 1
-fi
 
 ASSET="gitleaks_${VERSION}_${OS}_${ARCH}.tar.gz"
 BASE="https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}"

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "secure-ai-gateway"
-version = "0.3.0"
+version = "0.4.0"
 description = "Enterprise AI data-protection gateway: use external LLMs on business documents without exposing confidential data"
 readme = "README.md"
 requires-python = ">=3.12"

@@ -63,7 +63,7 @@
   `VAULT_MASTER_KEY` 讓 token 身分跨 session 保持穩定，存入
   Fernet 加密 JSON store（SR-026）；預設 session 維持 session-only；
   restore() 維持 session 範圍（舊 session token 出現在回應仍會
-  阻擋，fail closed）；752 tests 全綠
+  阻擋，fail closed）；1011 tests 全綠
 
 ## 運作方式
 
@@ -190,7 +190,7 @@ stdlib `secrets`。開發工具：pytest、ruff、mypy、bandit、pip-audit，
 6. **還原** — response guard 把回覆裡每個代號對照本次 session 的
    vault 驗證（陌生代號拒絕）、掃描有無洩漏的敏感內容，再把真名換回。
 
-以上每一環都由 753 個測試釘住。
+以上每一環都由 1011 個測試釘住。
 
 ## 文件
 

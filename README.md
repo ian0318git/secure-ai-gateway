@@ -80,7 +80,7 @@ It does **not** replace enterprise governance:
   `VAULT_MASTER_KEY` keeps token identities stable across sessions in
   a Fernet-encrypted JSON store (SR-026); default sessions stay
   session-only; restore() stays session-scoped (a previous-session
-  token in a response still blocks, fail closed); 752 tests green
+  token in a response still blocks, fail closed); 1011 tests green
 
 ## How it works
 
@@ -218,7 +218,7 @@ work:
    against this session's vault (unknown -> refused), scans for leaked
    sensitive content, then substitutes the real names back.
 
-Every step above is pinned by the 753-test suite.
+Every step above is pinned by the 1011-test suite.
 
 ## Documents
 

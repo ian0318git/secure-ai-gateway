@@ -1,7 +1,7 @@
 # Secure AI Gateway — Claude Code Project Instructions
 
-Version: 0.3
-Phase: M0 — Design Review
+Version: 0.4.0
+Phase: M0–M6 complete — PoC closed (see `docs/FINAL_REPORT.md`)
 
 ## 1. Project Role
 
@@ -97,9 +97,13 @@ Do not silently resolve security-relevant ambiguity.
 
 ---
 
-# 5. M0 RULE — REVIEW BEFORE CODE
+# 5. M0 RULE — REVIEW BEFORE CODE (GATE PASSED)
 
-During M0:
+**Status: completed.** M0 closed at v0.3 on human approval, and the
+milestones that followed shipped through M6. This section is kept as a
+record of the gate, not as a live restriction.
+
+What the gate required:
 
 - Do NOT implement production code.
 - Do NOT install unnecessary dependencies.
@@ -108,9 +112,12 @@ During M0:
 - Do NOT modify design documents during architecture review unless
   explicitly asked.
 
-The first Claude task is architecture/security review only.
+The first Claude task was architecture/security review only.
 
-Implementation begins only after human approval.
+Implementation began only after human approval.
+
+The rule survives as a principle for future work: review the design and
+security impact before implementing a change.
 
 ---
 
@@ -178,7 +185,7 @@ Do not optimise recall by indiscriminately masking non-PII content.
 
 # 8. TOKEN LIFECYCLE
 
-For PoC v0.3:
+For PoC v0.4.0:
 
 Token mappings are scoped to a single session. A session is one gateway
 invocation (one instruction and one document processed end-to-end).
@@ -336,6 +343,9 @@ M4 — Response Protection
     |
     v
 M5 — Security Test Suite
+    |
+    v
+M6 — Persistent Token Store (opt-in, SR-026)
 
 Do not skip M0.
 

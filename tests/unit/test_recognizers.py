@@ -157,7 +157,10 @@ class TestCreditCardRecognizerZh:
 class TestApiKeyRecognizerZh:
     POS = (
         "sk-aB3dEfGhIjKlMnOpQrStUvWxYz0123456789abcdef",
-        "供應商 AIzaSyBw2t1nwPcR0XvLmQqKjHfGdSaZoEuxcY 之金鑰",
+        # Synthetic placeholder. Shaped like a Google key so the AIza
+        # branch of _API_KEY_RE is exercised, but self-evidently not a
+        # real credential. Never paste a real key into a fixture.
+        "供應商 AIzaSyEXAMPLEKEYabcdefghijklmnopqrst 之金鑰",
         "ghp_M9O1kSGgc7oJ68nQuPFL3r94JIy9h6rbK",
         "AKIAIOSFODNN7EXAMPLE",
         "xoxb-123456789012-abcdefghijkl",
